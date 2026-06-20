@@ -1,0 +1,2 @@
+/usr/bin/ar qc libcsv_util.a CMakeFiles/csv_util.dir/src/csv_util/csv_util.cpp.o
+/usr/bin/ranlib libcsv_util.a

@@ -1,0 +1,7 @@
+/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project1/build/CMakeFiles/imgDisplay.dir
+/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project1/build/CMakeFiles/vidDisplay.dir
+/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project1/build/CMakeFiles/timeBlur.dir
+/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project1/build/CMakeFiles/filters.dir
+/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project1/build/CMakeFiles/faceDetect.dir
+/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project1/build/CMakeFiles/edit_cache.dir
+/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project1/build/CMakeFiles/rebuild_cache.dir

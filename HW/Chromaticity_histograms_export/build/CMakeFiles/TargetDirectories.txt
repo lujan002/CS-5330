@@ -1,0 +1,3 @@
+/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/HW/Chromaticity_histograms_export/build/CMakeFiles/makeHist.dir
+/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/HW/Chromaticity_histograms_export/build/CMakeFiles/edit_cache.dir
+/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/HW/Chromaticity_histograms_export/build/CMakeFiles/rebuild_cache.dir
