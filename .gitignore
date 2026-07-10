@@ -3,3 +3,4 @@ __pycache__/
 *.onnx
 project*/build/
 *.mp4
+project4/models/

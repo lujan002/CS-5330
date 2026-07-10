@@ -62,6 +62,170 @@ std::vector<ObjectRecord> loadObjectDatabase(const std::string& filename) {
     return database;
 }
 
+bool saveObjectDatabase(const std::string& filename, const std::vector<ObjectRecord>& database) {
+    std::ofstream file(filename);
+    if (!file.is_open()) {
+        std::cerr << "Could not open " << filename << " to save database." << std::endl;
+        return false;
+    }
+
+    for (const auto& record : database) {
+        file << record.name;
+        for (double feature : record.features) {
+            file << "," << feature;
+        }
+        file << std::endl;
+    }
+
+    return true;
+}
+
+int findObjectIndexByName(const std::vector<ObjectRecord>& database, const std::string& name) {
+    auto match = std::find_if(database.begin(), database.end(),
+        [&name](const ObjectRecord& record) {
+            return record.name == name;
+        });
+    if (match == database.end()) {
+        return -1;
+    }
+    return static_cast<int>(std::distance(database.begin(), match));
+}
+
+std::vector<std::vector<int>> createEmptyConfusionMatrix(const std::vector<ObjectRecord>& database) {
+    return std::vector<std::vector<int>>(database.size(), std::vector<int>(database.size(), 0));
+}
+
+std::vector<std::vector<int>> loadConfusionMatrix(const std::string& filename,
+                                                  const std::vector<ObjectRecord>& database) {
+    std::vector<std::vector<int>> matrix = createEmptyConfusionMatrix(database);
+    std::ifstream file(filename);
+    if (!file.is_open()) {
+        return matrix;
+    }
+
+    std::string line;
+    std::vector<std::string> column_names;
+    if (std::getline(file, line)) {
+        std::stringstream header(line);
+        std::string cell;
+        std::getline(header, cell, ','); // top-left label cell
+        while (std::getline(header, cell, ',')) {
+            column_names.push_back(cell);
+        }
+    }
+
+    while (std::getline(file, line)) {
+        if (line.empty()) {
+            continue;
+        }
+
+        std::stringstream row_stream(line);
+        std::string row_name;
+        std::getline(row_stream, row_name, ',');
+        int row_idx = findObjectIndexByName(database, row_name);
+        if (row_idx < 0) {
+            continue;
+        }
+
+        std::string cell;
+        int csv_col = 0;
+        while (std::getline(row_stream, cell, ',')) {
+            if (csv_col < static_cast<int>(column_names.size())) {
+                int col_idx = findObjectIndexByName(database, column_names[csv_col]);
+                if (col_idx >= 0 && !cell.empty()) {
+                    matrix[row_idx][col_idx] = std::stoi(cell);
+                }
+            }
+            csv_col++;
+        }
+    }
+
+    return matrix;
+}
+
+bool saveConfusionMatrix(const std::string& filename,
+                         const std::vector<std::vector<int>>& matrix,
+                         const std::vector<ObjectRecord>& database) {
+    std::ofstream file(filename);
+    if (!file.is_open()) {
+        std::cerr << "Could not open " << filename << " to save confusion matrix." << std::endl;
+        return false;
+    }
+
+    file << "actual/predicted";
+    for (const auto& record : database) {
+        file << "," << record.name;
+    }
+    file << std::endl;
+
+    for (int row = 0; row < static_cast<int>(database.size()); row++) {
+        file << database[row].name;
+        for (int col = 0; col < static_cast<int>(database.size()); col++) {
+            int value = 0;
+            if (row < static_cast<int>(matrix.size()) && col < static_cast<int>(matrix[row].size())) {
+                value = matrix[row][col];
+            }
+            file << "," << value;
+        }
+        file << std::endl;
+    }
+
+    return true;
+}
+
+std::vector<double> computeFeatureStdVector(const std::vector<ObjectRecord>& database) {
+    std::vector<double> std_vector;
+    for (int col_idx = 0; col_idx < static_cast<int>(database[0].features.size()); col_idx++) {
+        std::vector<double> col;
+        for (const auto& record : database) {
+            col.push_back(record.features[col_idx]);
+        }
+
+        double sum = std::accumulate(col.begin(), col.end(), 0.0);
+        double mean = sum / col.size();
+
+        double squared_diff = 0.0;
+        for (double val : col){
+            squared_diff += (val - mean) * (val - mean);
+        }
+
+        std_vector.push_back(std::sqrt(squared_diff / col.size()));
+    }
+    return std_vector;
+}
+
+std::vector<std::pair<std::string, double>> rankObjectMatches(
+    const std::vector<double>& feature_vector_img,
+    const std::vector<ObjectRecord>& database,
+    const std::vector<double>& std_vector) {
+    std::vector<std::pair<std::string, double>> name_dist_pairs;
+
+    for (int object_idx = 0; object_idx < static_cast<int>(database.size()); object_idx++) {
+        std::string name = database[object_idx].name;
+        std::vector<double> feature_vector_db = database[object_idx].features;
+
+        assert(feature_vector_db.size() == feature_vector_img.size());
+
+        double euclidean_dist = 0.0;
+        for (int feature_idx = 0; feature_idx < static_cast<int>(feature_vector_img.size()); feature_idx++){
+            double std_value = std_vector[feature_idx];
+            if (std_value == 0.0) {
+                std_value = 1.0;
+            }
+            double diff = feature_vector_img[feature_idx] - feature_vector_db[feature_idx];
+            euclidean_dist += diff * diff / std_value / std_value;
+        }
+        name_dist_pairs.push_back({name, euclidean_dist});
+    }
+
+    std::sort(name_dist_pairs.begin(), name_dist_pairs.end(), [](const auto& a, const auto& b) {
+        return a.second < b.second;
+    });
+
+    return name_dist_pairs;
+}
+
+
 int threshold(const cv::Mat &src, cv::Mat &dst){
     // input: BGR or grayscale image, CV_8UC3 or CV_8UC1
     // output: binary image, CV_8UC1
@@ -644,42 +808,278 @@ int compute_features(const cv::Mat &labels, const cv::Mat &stats, cv::Mat &dst, 
     return 0;
 }
 
+int compute_features_resnet(const cv::Mat &frame, const cv::Mat &labels, const cv::Mat &stats, cv::Mat &dst, std::vector<std::pair<int, std::vector<double>>> &feature_table) {
+    // input: 
+    // region label image, CV_32S
+    // region stats,  
+    // output: 
+    // feature visualization image, CV_8UC3
+    // feature data table,  
+
+    // requireds oriented bounding box (provided by cv2.connectedComponentsWithStats?)
+    // and axis of least central moment 
+
+    // compute default moment for each region
+    // M = x^p * y^q * f(x, y)
+    // m00: foreground sum
+    // m10: sum of x coords in region (global moment)
+    // m01: sum of y coords in region (global moment)
+    // m11: sum of x*y coords in region (global moment)
+    // mu11: 
+    // mu20: x central moment
+    // mu02: y central moment
+    // f(x, y): 1 if foreground/region, 0 if background/other region
+    
+    std::set<int> region_ids;
+
+    // Load once, not inside the region loop:
+    cv::dnn::Net resnet_net = cv::dnn::readNetFromONNX("../src/resnet18-v2-7.onnx");
+
+    // Collect all non-background region IDs in the segmentation image.
+    for (int row = 0; row < labels.rows; ++row) {
+        for (int col = 0; col < labels.cols; ++col) {
+            int region_id = labels.at<int>(row, col);
+            if (region_id != 0) {
+                region_ids.insert(region_id);
+            }
+        }
+    }
+    
+    for (int region_id : region_ids) {
+        double m00 = 0.0;
+        double m10 = 0.0;
+        double m01 = 0.0;
+        double m11 = 0.0;
+        double m20 = 0.0;
+        double m02 = 0.0;
+        std::vector<cv::Point2d> pixels;
+        int region_left = labels.cols;
+        int region_top = labels.rows;
+        for (int row = 0; row < labels.rows; ++row) {
+            for (int col = 0; col < labels.cols; ++col) {
+                int f = 0;
+                if (labels.at<int>(row, col) == region_id) {
+                    // add pixels to vector for use later in computing bounding box
+                    pixels.emplace_back(col, row);
+                    region_left = std::min(region_left, col);
+                    region_top = std::min(region_top, row);
+                    f = 1;
+                }
+                // int pixel_region_id = labels.at<int>(row, col);
+                // int f = pixel_region_id != 0 && pixel_region_id == region_id ? 1 : 0;
+                m00 += f;
+                m10 += col * f;
+                m01 += row * f;
+                m11 += col * row * f;
+                m20 += col * col * f;
+                m02 += row * row * f;
+            }
+        }
+        double mean_x = m10/m00;
+        double mean_y = m01/m00;
+
+        // central moments
+        double mu11 = (m11 / m00) - (mean_x * mean_y);
+        double mu02 = (m02 / m00) - (mean_y * mean_y);
+        double mu20 = (m20 / m00) - (mean_x * mean_x);
+
+        // angle of least central moment (dir of primary eigenvector)
+        double alpha = 0.5 * atan2((2 * mu11), (mu20 - mu02)); // atan2 takes (num, denom) args
+        
+        // compute second order moment about axis of least central moment
+        // double beta = alpha + math.pi/2
+        // double mu22 = 
+
+        // build eigenvectors
+        std::vector<double> e1 = {cos(alpha), sin(alpha)};
+        std::vector<double> e2 = {-sin(alpha), cos(alpha)};
+
+
+        // To compute the smallest aligned bounding box for a region, project all pixels of the region
+        // onto the primary eigenvector (orientation) and its perpendicular.
+        // Then find the min/max of the projected coordinates.
+
+        // Collect all pixel coordinates for the current region
+        // std::vector<cv::Point2d> pixels;
+        // for (int row = 0; row < src.rows; ++row) {
+        //     for (int col = 0; col < src.cols; ++col) {
+        //         if (src.at<int>(row, col) == region_id) {
+        //             pixels.emplace_back(col, row);
+        //         }
+        //     }
+        // }
+
+        // Project each pixel onto the axes aligned with the orientation (alpha)
+        // e1 = (cos(alpha), sin(alpha)), e2 = (-sin(alpha), cos(alpha))
+        double cos_a = cos(alpha);
+        double sin_a = sin(alpha);
+
+        double min_proj1 = std::numeric_limits<double>::max(), max_proj1 = -std::numeric_limits<double>::max();
+        double min_proj2 = std::numeric_limits<double>::max(), max_proj2 = -std::numeric_limits<double>::max();
+
+        for (const auto& pt : pixels) {
+            // Shift to centroid
+            double x_shifted = pt.x - mean_x;
+            double y_shifted = pt.y - mean_y;
+
+            // Projection onto eigenvectors
+            double proj1 =  x_shifted * cos_a + y_shifted * sin_a; // projection on e1
+            double proj2 = -x_shifted * sin_a + y_shifted * cos_a; // projection on e2
+            if (proj1 < min_proj1) min_proj1 = proj1;
+            if (proj1 > max_proj1) max_proj1 = proj1;
+            if (proj2 < min_proj2) min_proj2 = proj2;
+            if (proj2 > max_proj2) max_proj2 = proj2;
+        }
+
+        // Now, the four corners of the bounding box (in image coordinates) are:
+        // (min_proj1, min_proj2), (min_proj1, max_proj2),
+        // (max_proj1, min_proj2), (max_proj1, max_proj2)
+        // Convert these back to image coordinates:
+        std::vector<cv::Point2d> box_corners;
+        box_corners.push_back({mean_x + min_proj1 * cos_a - min_proj2 * sin_a, mean_y + min_proj1 * sin_a + min_proj2 * cos_a});
+        box_corners.push_back({mean_x + max_proj1 * cos_a - min_proj2 * sin_a, mean_y + max_proj1 * sin_a + min_proj2 * cos_a});
+        box_corners.push_back({mean_x + max_proj1 * cos_a - max_proj2 * sin_a, mean_y + max_proj1 * sin_a + max_proj2 * cos_a});
+        box_corners.push_back({mean_x + min_proj1 * cos_a - max_proj2 * sin_a, mean_y + min_proj1 * sin_a + max_proj2 * cos_a});
+
+        // The corners in `box_corners` are the minimal bounding box aligned with the region orientation.
+    
+        // add bounding box overlay (lime green) to the output image
+
+        // Draw bounding box with lines between the four box corners
+        // Lime green color (BGR): (0, 255, 128)
+        cv::Scalar limeGreen(0, 255, 128);
+        int thickness = 2;
+
+        for (int i = 0; i < 4; ++i) {
+            cv::Point pt1(cvRound(box_corners[i].x), cvRound(box_corners[i].y));
+            cv::Point pt2(cvRound(box_corners[(i+1)%4].x), cvRound(box_corners[(i+1)%4].y));
+            cv::line(dst, pt1, pt2, limeGreen, thickness);            
+        }
+        // draw center and eigenvectors if desired
+        cv::Scalar red(0, 0, 255);
+        cv::Scalar blue (255, 0, 0);
+        cv::Point center(cvRound(mean_x), cvRound(mean_y));
+
+        cv::circle(dst, center, 5, red, thickness);
+        // Draw major axis (red) from center to bounding box limit in the major axis direction
+        cv::Point2d major_axis_end1(
+            mean_x + max_proj1 * cos_a,
+            mean_y + max_proj1 * sin_a
+        );
+        cv::Point2d major_axis_end2(
+            mean_x + min_proj1 * cos_a,
+            mean_y + min_proj1 * sin_a
+        );
+
+        cv::line(dst, cv::Point(cvRound(major_axis_end1.x), cvRound(major_axis_end1.y)), 
+                      cv::Point(cvRound(major_axis_end2.x), cvRound(major_axis_end2.y)), red, thickness);
+
+        // Draw minor axis (blue) from center to bounding box limit in the minor axis direction
+        cv::Point2d minor_axis_end1(
+            mean_x - min_proj2 * sin_a,
+            mean_y + min_proj2 * cos_a
+        );
+        cv::Point2d minor_axis_end2(
+            mean_x - max_proj2 * sin_a,
+            mean_y + max_proj2 * cos_a
+        );
+        cv::line(dst, cv::Point(cvRound(minor_axis_end1.x), cvRound(minor_axis_end1.y)),
+                      cv::Point(cvRound(minor_axis_end2.x), cvRound(minor_axis_end2.y)), blue, thickness);
+
+
+
+        // extract part of image inside bounding box from ORIGINAL COLOR IMAGE
+        double width = cv::norm(box_corners[1] - box_corners[0]);
+        double height = cv::norm(box_corners[2] - box_corners[1]);
+        cv::Mat extracted_image = frame(cv::Rect(region_left, region_top, static_cast<int>(width), static_cast<int>(height)));
+
+        // rotate extracted_image align with primary axis
+        cv::Mat rotated_image;
+        cv::Mat M = cv::getRotationMatrix2D(cv::Point2f(mean_x - region_left, mean_y - region_top), alpha * 180/M_PI, 1.0);
+        cv::warpAffine(extracted_image, rotated_image, M, extracted_image.size());
+
+        // reshape into 224x224 image
+        cv::Mat reshaped_image;
+        cv::resize(rotated_image, reshaped_image, cv::Size(224, 224));
+
+        // compute resnet embedding
+        cv::Mat embedding;
+        cv::Mat blob;
+
+        // Converts standard 2D images into 4D 'blobs' that neural networks can ingest. 
+        // The function handles resizing, mean subtraction, channel scaling, and red-blue channel swapping
+        cv::dnn::blobFromImage(
+            reshaped_image,
+            blob,
+            (1.0 / 255.0) * (1.0 / 0.226),
+            cv::Size(224, 224),
+            cv::Scalar(124, 116, 104),
+            true,
+            false,
+            CV_32F
+        );
+
+        resnet_net.setInput(blob);
+        embedding = resnet_net.forward("resnetv22_flatten0_reshape0");
+
+        std::vector<double> resnet_feature_vector;
+        resnet_feature_vector.reserve(embedding.total());
+
+        const float *data = embedding.ptr<float>();
+        for (size_t i = 0; i < embedding.total(); i++) {
+            resnet_feature_vector.push_back(static_cast<double>(data[i]));
+        }
+
+        feature_table.push_back({region_id, resnet_feature_vector}); 
+
+        // print region ID near the top-left corner of the region
+        cv::Point region_id_org(region_left, std::max(region_top - 5, 15));
+        std::string region_id_text = std::to_string(region_id);
+        int font = cv::FONT_HERSHEY_SIMPLEX;
+        double font_scale = 0.5;
+        int thickness_text = 1;
+        cv::putText(dst, region_id_text, region_id_org, font, font_scale, cv::Scalar(0, 0, 0), thickness_text + 2);
+        cv::putText(dst, region_id_text, region_id_org, font, font_scale, cv::Scalar(255, 255, 255), thickness_text);
+
+    }
+    return 0;
+}
+
 void showConfusionMatrixGui(const std::vector<std::vector<int>> &confusion_matrix,
-                            const std::vector<ObjectRecord> &database,
-                            const std::vector<std::pair<int, std::vector<double>>> &feature_table) {
-    if (confusion_matrix.empty() || feature_table.empty()) {
+                            const std::vector<ObjectRecord> &database) {
+    if (confusion_matrix.empty() || database.empty()) {
         std::cout << "Confusion matrix is empty.\n";
         return;
     }
 
     const int row_label_width = 150;
-    const int column_width = 90;
+    const int column_width = 100;
     const int row_height = 40;
     const int header_height = 60;
     const int margin = 20;
 
-    int image_width = margin * 2 + row_label_width + column_width * static_cast<int>(feature_table.size());
+    int image_width = margin * 2 + row_label_width + column_width * static_cast<int>(database.size());
     int image_height = margin * 2 + header_height + row_height * static_cast<int>(database.size());
     cv::Mat matrix_image(image_height, image_width, CV_8UC3, cv::Scalar(255, 255, 255));
 
     int table_left = margin + row_label_width;
     int table_top = margin + header_height;
-    int table_right = table_left + column_width * static_cast<int>(feature_table.size());
+    int table_right = table_left + column_width * static_cast<int>(database.size());
     int table_bottom = table_top + row_height * static_cast<int>(database.size());
 
     cv::putText(matrix_image, "Confusion Matrix", cv::Point(margin, 30),
                 cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 0, 0), 2);
-    cv::putText(matrix_image, "Actual / Region", cv::Point(margin, table_top - 15),
+    cv::putText(matrix_image, "Actual / Predicted", cv::Point(margin, table_top - 15),
                 cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 0), 1);
 
-    for (int col = 0; col < static_cast<int>(feature_table.size()); col++) {
+    for (int col = 0; col < static_cast<int>(database.size()); col++) {
         int x = table_left + col * column_width;
         cv::rectangle(matrix_image, cv::Rect(x, table_top - row_height, column_width, row_height),
                       cv::Scalar(230, 230, 230), cv::FILLED);
         cv::rectangle(matrix_image, cv::Rect(x, table_top - row_height, column_width, row_height),
                       cv::Scalar(0, 0, 0), 1);
-        cv::putText(matrix_image, "R" + std::to_string(feature_table[col].first),
-                    cv::Point(x + 20, table_top - 14), cv::FONT_HERSHEY_SIMPLEX,
+        cv::putText(matrix_image, database[col].name,
+                    cv::Point(x + 8, table_top - 14), cv::FONT_HERSHEY_SIMPLEX,
                     0.5, cv::Scalar(0, 0, 0), 1);
     }
 
@@ -692,7 +1092,7 @@ void showConfusionMatrixGui(const std::vector<std::vector<int>> &confusion_matri
         cv::putText(matrix_image, database[row].name, cv::Point(margin + 8, y + 25),
                     cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 0), 1);
 
-        for (int col = 0; col < static_cast<int>(feature_table.size()); col++) {
+        for (int col = 0; col < static_cast<int>(database.size()); col++) {
             int x = table_left + col * column_width;
             cv::rectangle(matrix_image, cv::Rect(x, y, column_width, row_height),
                           cv::Scalar(0, 0, 0), 1);
@@ -707,6 +1107,91 @@ void showConfusionMatrixGui(const std::vector<std::vector<int>> &confusion_matri
     cv::imshow("Confusion Matrix", matrix_image);
     cv::waitKey(0);
     cv::destroyWindow("Confusion Matrix");
+}
+
+int promptCorrectObjectIndex(const std::vector<ObjectRecord>& database) {
+    std::cout << "Known objects:";
+    for (const auto& record : database) {
+        std::cout << " " << record.name;
+    }
+    std::cout << std::endl;
+
+    while (true) {
+        std::string actual_name;
+        std::cout << "Enter correct object name (blank to skip): ";
+        std::getline(std::cin, actual_name);
+        if (actual_name.empty()) {
+            return -1;
+        }
+
+        int actual_idx = findObjectIndexByName(database, actual_name);
+        if (actual_idx >= 0) {
+            return actual_idx;
+        }
+
+        std::cout << "Object '" << actual_name << "' is not in the database.\n";
+    }
+}
+
+int evaluate(const std::vector<std::pair<int, std::vector<double>>> &feature_table) {
+    std::string database_path = "../src/object_db.csv";
+    std::string confusion_matrix_path = "../src/confusion_matrix.csv";
+    std::vector<ObjectRecord> database = loadObjectDatabase(database_path);
+    if (database.empty()) {
+        std::cerr << "Database is empty. Add at least one object first.\n";
+        return -1;
+    }
+
+    std::vector<std::vector<int>> confusion_matrix = loadConfusionMatrix(confusion_matrix_path, database);
+    std::vector<double> std_vector = computeFeatureStdVector(database);
+
+    if (feature_table.empty()) {
+        std::cout << "No detected regions to evaluate.\n";
+        showConfusionMatrixGui(confusion_matrix, database);
+        return 0;
+    }
+
+    for (int i = 0; i < static_cast<int>(feature_table.size()); i++) {
+        std::vector<std::pair<std::string, double>> name_dist_pairs =
+            rankObjectMatches(feature_table[i].second, database, std_vector);
+        if (name_dist_pairs.empty()) {
+            continue;
+        }
+
+        const auto& top_match = name_dist_pairs[0];
+        int predicted_idx = findObjectIndexByName(database, top_match.first);
+        if (predicted_idx < 0) {
+            continue;
+        }
+
+        std::cout << "Region " << feature_table[i].first << " top match: "
+                  << top_match.first << " (distance: " << top_match.second << ")\n";
+        std::string response;
+        std::cout << "Was this match correct? (y/n, blank to skip): ";
+        std::getline(std::cin, response);
+
+        if (response.empty()) {
+            continue;
+        }
+
+        int actual_idx = -1;
+        if (response[0] == 'y' || response[0] == 'Y') {
+            actual_idx = predicted_idx;
+        } else if (response[0] == 'n' || response[0] == 'N') {
+            actual_idx = promptCorrectObjectIndex(database);
+        } else {
+            std::cout << "Response not recognized. Skipping this detection.\n";
+            continue;
+        }
+
+        if (actual_idx >= 0) {
+            confusion_matrix[actual_idx][predicted_idx]++;
+            saveConfusionMatrix(confusion_matrix_path, confusion_matrix, database);
+        }
+    }
+
+    showConfusionMatrixGui(confusion_matrix, database);
+    return 0;
 }
 
 int train(const std::vector<std::pair<int, std::vector<double>>> &feature_table) {
@@ -728,63 +1213,17 @@ int train(const std::vector<std::pair<int, std::vector<double>>> &feature_table)
         std::cerr << "Database is empty. Add at least one object first.\n";
         return -1;
     }
-    std::vector<std::vector<int>> confusion_matrix(database.size(), std::vector<int>(feature_table.size(), 0));
 
     // compute the std for all collumns in database
-    std::vector<double> std_vector;
-
-    for (int col_idx = 0; col_idx < database[0].features.size(); col_idx++) {
-        // start at feature_idx 1 to skip the first col (names)
-        std::vector<double> col;
-        for (const auto& record : database) {
-            col.push_back(record.features[col_idx]);
-        }
-   
-        // calculate mean
-        double sum = std::accumulate(col.begin(), col.end(), 0.0);
-        double mean = sum / col.size();
-
-        // sum squared differences
-        double squared_diff = 0.0;
-        for (double val : col){
-            squared_diff += (val - mean) * (val - mean);
-        }
-
-        // divide by N and sqrt
-        double std = std::sqrt(squared_diff / col.size());
-
-        // add to std vector
-        std_vector.push_back(std);
-    }
+    std::vector<double> std_vector = computeFeatureStdVector(database);
 
     for (int i = 0; i < feature_table.size(); i++){
         std::vector<double> feature_vector_img = feature_table[i].second; // grab the second part of the pair
 
-        std::vector<std::pair<std::string, double>> name_dist_pairs; // (object name, euclidean distance) 
-        for (int object_idx = 0; object_idx < database.size(); object_idx++) {
-            std::string name = database[object_idx].name; // first collumn
-            std::vector<double> feature_vector_db = database[object_idx].features; // all other collumns 
-
-            // check that feature_vectors are the same length 
-            assert(feature_vector_db.size() == feature_vector_img.size());
-    
-            // Scaled euclidean distance metric
-            double euclidean_dist = 0.0;
-            for (int feature_idx = 0; feature_idx < feature_vector_img.size(); feature_idx++){
-                // printf("feature_idx: %d, feature_vector_img[feature_idx]: %f, feature_vector_db[feature_idx]: %f, std_vector[feature_idx]: %f\n", feature_idx, feature_vector_img[feature_idx], feature_vector_db[feature_idx], std_vector[feature_idx]);
-                euclidean_dist += (feature_vector_img[feature_idx] - feature_vector_db[feature_idx] ) * 
-                (feature_vector_img[feature_idx] - feature_vector_db[feature_idx] ) / std_vector[feature_idx] / std_vector[feature_idx];
-            }
-            name_dist_pairs.push_back({name, euclidean_dist});
-        }
+        std::vector<std::pair<std::string, double>> name_dist_pairs = rankObjectMatches(feature_vector_img, database, std_vector);
 
         // rank the top N matches (sort by euclidean_dist)
         int N = 5;
-        // Sort by increasing distance (best matches first)
-        std::sort(name_dist_pairs.begin(), name_dist_pairs.end(), [](const auto& a, const auto& b) {
-            return a.second < b.second;
-        });
-
         // Print the top N matches for this region
         std::cout << "Top " << N << " matches for region " << feature_table[i].first << ":\n";
         for (int match_idx = 0; match_idx < std::min(N, (int)name_dist_pairs.size()); ++match_idx) {
@@ -814,13 +1253,16 @@ int train(const std::vector<std::pair<int, std::vector<double>>> &feature_table)
                         if (existing != database.end()) {
                             std::cout << "Object already exists in database. Overwriting.\n";
                             existing->features = feature_vector_img;
-                            // Optionally update the CSV here too if you want true overwrite
+                            if (saveObjectDatabase(database_path, database)) {
+                                std::cout << "Updated object '" << user_input << "' in database.\n";
+                            }
                             break;
                         }
 
                         // Save the name and feature vector into new row in database
                         std::ofstream dbfile(database_path, std::ios::app);
                         if (dbfile.is_open()) {
+                            database.push_back({user_input, feature_vector_img});
                             dbfile << user_input;
                             for (double feature : feature_vector_img) {
                                 dbfile << "," << feature;
@@ -844,22 +1286,109 @@ int train(const std::vector<std::pair<int, std::vector<double>>> &feature_table)
             }
             else {
                 std::cout << "Recognized object: " << top_match.first << " (distance: " << top_match.second << ")\n";
-                // add to the confusion matrix
-                auto database_match = std::find_if(database.begin(), database.end(),
-                    [&top_match](const ObjectRecord& record) {
-                        return record.name == top_match.first;
-                    });
-                if (database_match != database.end()) {
-                    int database_idx = static_cast<int>(std::distance(database.begin(), database_match));
-                    confusion_matrix[database_idx][i]++;
-                }
             }
         }
     }  
-    showConfusionMatrixGui(confusion_matrix, database, feature_table);
     return 0;
 }
 
+int train_resnet(const std::vector<std::pair<int, std::vector<double>>> &feature_table) {
+    // Input: 
+    // feature visualization image, CV_8UC3
+    // feature data table
+
+    // Output:
+    // n/a 
+
+    // Updates database with new objects. Database includes name of object, feature vector, 
+
+    // Compare feature vector for regions in feature image, if a match exists in the database, skip
+    // If no match exists, if the user clicks inside the bounding box, prompt the user to enter the name of the objec
+    // and save the object, feature vector pair to the database
+    std::string database_path = "../src/resnet_object_db.csv";
+    std::vector<ObjectRecord> database = loadObjectDatabase(database_path);
+    if (database.empty()) {
+        std::cerr << "Database is empty. Add at least one object first.\n";
+        return -1;
+    }
+
+    // compute the std for all collumns in database
+    std::vector<double> std_vector = computeFeatureStdVector(database);
+
+    for (int i = 0; i < feature_table.size(); i++){
+        std::vector<double> feature_vector_img = feature_table[i].second; // grab the second part of the pair
+
+        std::vector<std::pair<std::string, double>> name_dist_pairs = rankObjectMatches(feature_vector_img, database, std_vector);
+
+        // rank the top N matches (sort by euclidean_dist)
+        int N = 5;
+        // Print the top N matches for this region
+        std::cout << "Top " << N << " matches for region " << feature_table[i].first << ":\n";
+        for (int match_idx = 0; match_idx < std::min(N, (int)name_dist_pairs.size()); ++match_idx) {
+            std::cout << "  " << name_dist_pairs[match_idx].first 
+                      << " (distance: " << name_dist_pairs[match_idx].second << ")\n";
+        }
+
+        // EXTENSION: determine if top match meets threshold to be new object
+        double threshold = 1000000; 
+        // Find the top match
+        if (!name_dist_pairs.empty()) {
+            const auto& top_match = name_dist_pairs[0];  
+
+            if (top_match.second > threshold) {
+                std::cout << "Region " << feature_table[i].first << ": Unrecognized object detected (distance: " << top_match.second << ").\n";
+                std::string user_input;
+                do {
+                    std::cout << "Please enter the name for the new object (or leave blank to skip): ";
+                    std::getline(std::cin, user_input);
+
+                    if (!user_input.empty()) {
+                        // Check if user_input is already in the database
+                        auto existing = std::find_if(database.begin(), database.end(),
+                            [&user_input](const ObjectRecord& record) {
+                                return record.name == user_input;
+                            });
+                        if (existing != database.end()) {
+                            std::cout << "Object already exists in database. Overwriting.\n";
+                            existing->features = feature_vector_img;
+                            if (saveObjectDatabase(database_path, database)) {
+                                std::cout << "Updated object '" << user_input << "' in database.\n";
+                            }
+                            break;
+                        }
+
+                        // Save the name and feature vector into new row in database
+                        std::ofstream dbfile(database_path, std::ios::app);
+                        if (dbfile.is_open()) {
+                            database.push_back({user_input, feature_vector_img});
+                            dbfile << user_input;
+                            for (double feature : feature_vector_img) {
+                                dbfile << "," << feature;
+                            }
+                            dbfile << std::endl;
+                            dbfile.close();
+                            std::cout << "Added object '" << user_input << "' to database.\n";
+                        } else {
+                            std::cerr << "Could not open object_db.csv to add new object.\n";
+                        }
+                        break; // move to the next object
+                    } else {
+                        // If input is blank, wait and ask again (do not move to next object until user enters input or explicitly skips)
+                        std::cout << "No name entered. Press Enter to skip or enter a name to add." << std::endl;
+                        // If user presses Enter again (keeps empty), break to skip
+                        if (user_input.empty()) {
+                            break;
+                        }
+                    }
+                } while (true);
+            }
+            else {
+                std::cout << "Recognized object: " << top_match.first << " (distance: " << top_match.second << ")\n";
+            }
+        }
+    }  
+    return 0;
+}
 int main(int argc, char *argv[]) {
     cv::VideoCapture *capdev;
 
@@ -895,7 +1424,7 @@ int main(int argc, char *argv[]) {
 
         // Thresholding algorithm (turns image into binary image)
         cv::Mat binary;
-        cv_threshold(blurred, binary);
+        threshold(blurred, binary);
 
         //--- Cleanup the binary image
         cv::Mat cleaned;
@@ -931,6 +1460,14 @@ int main(int argc, char *argv[]) {
         if (key == 'n') {
             train(feature_table);
             // won't get here until train finishes running and all unknown objects are named
+        }
+        if (key == 'e') {
+            evaluate(feature_table);
+        }
+        if (key == 'r') {
+            std::vector<std::pair<int, std::vector<double>>> resnet_feature_table;
+            compute_features_resnet(frame, labels, stats, feature_image, resnet_feature_table);
+            train_resnet(resnet_feature_table);
         }
     }
     delete capdev;

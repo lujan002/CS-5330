@@ -1,0 +1,6 @@
+actual/predicted,glasses,hammer,tape,pliers,pen
+glasses,1,0,0,0,0
+hammer,0,2,0,0,0
+tape,0,0,2,0,0
+pliers,0,0,0,2,0
+pen,0,0,0,0,2
