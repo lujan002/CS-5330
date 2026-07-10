@@ -58,6 +58,18 @@ def compute_3d_histogram(
     return hist.astype(np.float64), bin_edges
 
 
+def compute_histogram_intersection(hist_a: np.ndarray, hist_b: np.ndarray) -> np.ndarray:
+    """Per-bin minimum of two histograms (the intersection histogram)."""
+    if hist_a.shape != hist_b.shape:
+        raise ValueError("Histogram shapes must match.")
+    return np.minimum(hist_a, hist_b)
+
+
+def histogram_intersection_score(hist_a: np.ndarray, hist_b: np.ndarray) -> float:
+    """Sum of per-bin minima — histogram intersection similarity."""
+    return float(compute_histogram_intersection(hist_a, hist_b).sum())
+
+
 def _frequency_ratio(count: float, mode: float) -> float:
     return float(count / mode) if mode > 0 else 0.0
 
@@ -1771,6 +1783,13 @@ def parse_args() -> argparse.Namespace:
         default="euclidean",
         help="Ground distance between RGB bin centers for EMD (default: euclidean)",
     )
+    parser.add_argument(
+        "--intersect",
+        type=Path,
+        default=None,
+        metavar="IMAGE2",
+        help="Visualize histogram intersection with a second image (per-bin min of both histograms)",
+    )
     return parser.parse_args()
 
 
@@ -1794,6 +1813,10 @@ def main() -> int:
     image_bgr = cv2.imread(str(args.image), cv2.IMREAD_COLOR)
     if image_bgr is None:
         print(f"Error: failed to read image: {args.image}", file=sys.stderr)
+        return 1
+
+    if args.emd is not None and args.intersect is not None:
+        print("Error: use either --emd or --intersect, not both.", file=sys.stderr)
         return 1
 
     if args.emd is not None:
@@ -1859,6 +1882,78 @@ def main() -> int:
         except (RuntimeError, ValueError) as exc:
             print(f"Error: {exc}", file=sys.stderr)
             return 1
+        return 0
+
+    if args.intersect is not None:
+        if args.hist_1d or args.hist_rgb_1d:
+            print("Error: --intersect requires 3D color histograms (do not use --1d or --rgb-1d).", file=sys.stderr)
+            return 1
+        if not args.intersect.is_file():
+            print(f"Error: second image not found: {args.intersect}", file=sys.stderr)
+            return 1
+
+        image_bgr_b = cv2.imread(str(args.intersect), cv2.IMREAD_COLOR)
+        if image_bgr_b is None:
+            print(f"Error: failed to read image: {args.intersect}", file=sys.stderr)
+            return 1
+
+        hist_a, bin_edges = compute_3d_histogram(image_bgr, num_bins, normalize=not args.no_normalize)
+        hist_b, _bin_edges_b = compute_3d_histogram(image_bgr_b, num_bins, normalize=not args.no_normalize)
+        if hist_a.shape != hist_b.shape:
+            print("Error: histogram shapes differ; use the same --bins for both images.", file=sys.stderr)
+            return 1
+
+        hist_intersect = compute_histogram_intersection(hist_a, hist_b)
+        score = histogram_intersection_score(hist_a, hist_b)
+        normalized = not args.no_normalize
+        effective_bin_size = 256 / num_bins
+        title = (
+            f"Histogram Intersection — {args.image.name} ∩ {args.intersect.name} "
+            f"({num_bins}³ bins)\n"
+            f"Intersection score: {score:.6f}"
+        )
+
+        print(f"Image A: {args.image.name} ({image_bgr.shape[1]}x{image_bgr.shape[0]})")
+        print(f"Image B: {args.intersect.name} ({image_bgr_b.shape[1]}x{image_bgr_b.shape[0]})")
+        print(f"Bins per channel: {num_bins} (bin size ≈ {effective_bin_size:.2f} pixel values)")
+        print(f"Intersection score: {score:.6f}")
+        print(f"Non-zero intersection bins: {int(np.count_nonzero(hist_intersect))}")
+        print(f"Mode intersection bin value: {hist_intersect.max():.6f}")
+
+        if args.save_data is not None:
+            save_histogram_data(hist_intersect, args.save_data)
+
+        wants_plot = args.output is not None or args.show or args.output_html is not None
+        if wants_plot:
+            if args.output is not None or args.show:
+                plot_3d_histogram_matplotlib(
+                    hist_intersect,
+                    bin_edges,
+                    title=title,
+                    output_path=args.output,
+                    show=args.show,
+                    min_fraction=args.min_fraction,
+                    normalized=normalized,
+                    num_pixels=0,
+                    show_counts=args.show_counts,
+                )
+            if args.output_html is not None:
+                try:
+                    plot_3d_histogram_html(
+                        hist_intersect,
+                        bin_edges,
+                        title=title,
+                        output_path=args.output_html,
+                        min_fraction=args.min_fraction,
+                        normalized=normalized,
+                        num_pixels=0,
+                        show_counts=args.show_counts,
+                    )
+                except RuntimeError as exc:
+                    print(f"Error: {exc}", file=sys.stderr)
+                    return 1
+        elif args.save_data is None:
+            print("No output requested. Use --show, --output, --output-html, or --save-data.")
         return 0
 
     if args.save_grayscale is not None:
