@@ -1,3 +1,4 @@
 /media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project4/build/CMakeFiles/project4.dir
+/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project4/build/CMakeFiles/harris.dir
 /media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project4/build/CMakeFiles/edit_cache.dir
 /media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project4/build/CMakeFiles/rebuild_cache.dir

@@ -121,6 +121,799 @@ def _extract_voxels(
     return voxels or None
 
 
+def _voxel_from_index(
+    hist: np.ndarray,
+    bin_edges: list[np.ndarray],
+    ib: int,
+    ig: int,
+    ir: int,
+) -> VoxelBin | None:
+    count = float(hist[ib, ig, ir])
+    if count <= 0:
+        return None
+
+    mode = float(hist.max())
+    b_edges, g_edges, r_edges = bin_edges
+    r0, r1 = float(r_edges[ir]), float(r_edges[ir + 1])
+    g0, g1 = float(g_edges[ig]), float(g_edges[ig + 1])
+    b0, b1 = float(b_edges[ib]), float(b_edges[ib + 1])
+    r_center = (r0 + r1) * 0.5
+    g_center = (g0 + g1) * 0.5
+    b_center = (b0 + b1) * 0.5
+
+    return VoxelBin(
+        r0=r0,
+        g0=g0,
+        b0=b0,
+        dr=r1 - r0,
+        dg=g1 - g0,
+        db=b1 - b0,
+        r_center=r_center,
+        g_center=g_center,
+        b_center=b_center,
+        count=count,
+        bin_color=_bin_color(r_center, g_center, b_center),
+        opacity=_display_opacity(count, mode),
+    )
+
+
+def _top_k_voxels(
+    hist: np.ndarray,
+    bin_edges: list[np.ndarray],
+    k: int,
+) -> list[VoxelBin]:
+    flat = hist.ravel()
+    if flat.max() <= 0:
+        return []
+
+    order = np.argsort(flat)[::-1]
+    voxels: list[VoxelBin] = []
+    for idx in order:
+        if flat[idx] <= 0:
+            break
+        ib, ig, ir = np.unravel_index(int(idx), hist.shape)
+        voxel = _voxel_from_index(hist, bin_edges, ib, ig, ir)
+        if voxel is not None:
+            voxels.append(voxel)
+        if len(voxels) >= k:
+            break
+    return voxels
+
+
+@dataclass(frozen=True)
+class SubCube:
+    src_center: tuple[float, float, float]
+    dst_center: tuple[float, float, float]
+    size: tuple[float, float, float]
+    src_color: tuple[float, float, float]
+    dst_color: tuple[float, float, float]
+    mass: float
+    move_cost: float
+    src_idx: int
+    dst_idx: int
+
+
+def _lerp_rgb(
+    a: tuple[float, float, float],
+    b: tuple[float, float, float],
+    t: float,
+) -> tuple[float, float, float]:
+    t = float(np.clip(t, 0.0, 1.0))
+    return tuple((1.0 - t) * c0 + t * c1 for c0, c1 in zip(a, b))
+
+
+def _subdivide_voxel_grid(voxel: VoxelBin, grid: int, mass: float) -> list[tuple[tuple[float, float, float], tuple[float, float, float]]]:
+    """Return (center, size) for each sub-cube in a grid×grid×grid layout inside voxel."""
+    if grid <= 0:
+        raise ValueError("grid must be positive.")
+
+    dr = voxel.dr / grid
+    dg = voxel.dg / grid
+    db = voxel.db / grid
+    size = (dr, dg, db)
+    centers: list[tuple[tuple[float, float, float], tuple[float, float, float]]] = []
+
+    for kb in range(grid):
+        for kg in range(grid):
+            for kr in range(grid):
+                r_center = voxel.r0 + (kr + 0.5) * dr
+                g_center = voxel.g0 + (kg + 0.5) * dg
+                b_center = voxel.b0 + (kb + 0.5) * db
+                centers.append(((r_center, g_center, b_center), size))
+
+    return centers
+
+
+def _allocate_destinations_for_source(
+    flow_row: np.ndarray,
+    source_mass: float,
+    num_cells: int,
+) -> list[int]:
+    """Assign each sub-cube to a destination using proportional largest-remainder counts."""
+    if num_cells <= 0:
+        return []
+
+    n_dest = len(flow_row)
+    if source_mass <= 1e-12:
+        dominant = int(np.argmax(flow_row))
+        return [dominant] * num_cells
+
+    quotas = np.array([flow_row[j] / source_mass for j in range(n_dest)], dtype=float) * num_cells
+    counts = np.floor(quotas).astype(int)
+
+    positive = [j for j in range(n_dest) if flow_row[j] > 1e-9]
+    if positive and num_cells >= len(positive):
+        for j in positive:
+            if counts[j] == 0:
+                counts[j] = 1
+
+    while int(counts.sum()) > num_cells:
+        j = int(np.argmax(counts))
+        if counts[j] > 0:
+            counts[j] -= 1
+
+    remainder = num_cells - int(counts.sum())
+    if remainder > 0:
+        fractional = quotas - np.floor(quotas)
+        order = np.argsort(-fractional)
+        for j in order:
+            if remainder <= 0:
+                break
+            counts[j] += 1
+            remainder -= 1
+
+    allocations: list[int] = []
+    for j, count in enumerate(counts):
+        allocations.extend([j] * int(count))
+
+    while len(allocations) < num_cells:
+        allocations.append(int(np.argmax(flow_row)))
+    while len(allocations) > num_cells:
+        allocations.pop()
+
+    return allocations
+
+
+def _interleave_destination_labels(labels: list[int]) -> list[int]:
+    """Spread destinations across a source bin instead of grouping them in blocks."""
+    if not labels:
+        return []
+
+    from collections import Counter, deque
+
+    buckets: dict[int, deque[int]] = {
+        dest: deque([dest] * count) for dest, count in Counter(labels).items()
+    }
+    order = sorted(buckets.keys())
+    interleaved: list[int] = []
+    while any(buckets[dest] for dest in order):
+        for dest in order:
+            if buckets[dest]:
+                interleaved.append(buckets[dest].popleft())
+    return interleaved
+
+
+def _interleave_moves(moves: list[SubCube]) -> list[SubCube]:
+    """Animate in round-robin order across source→destination pairs."""
+    if not moves:
+        return []
+
+    from collections import defaultdict, deque
+
+    buckets: dict[tuple[int, int], deque[SubCube]] = defaultdict(deque)
+    for move in moves:
+        buckets[(move.src_idx, move.dst_idx)].append(move)
+
+    keys = sorted(buckets.keys())
+    interleaved: list[SubCube] = []
+    while any(buckets[key] for key in keys):
+        for key in keys:
+            if buckets[key]:
+                interleaved.append(buckets[key].popleft())
+    return interleaved
+
+
+def _rgb_ground_distance(
+    a: tuple[float, float, float],
+    b: tuple[float, float, float],
+    metric: str,
+) -> float:
+    delta = np.array(b, dtype=float) - np.array(a, dtype=float)
+    if metric == "euclidean":
+        return float(np.linalg.norm(delta))
+    if metric == "manhattan":
+        return float(np.sum(np.abs(delta)))
+    raise ValueError(f"Unknown EMD metric: {metric}")
+
+
+def _compute_emd_flow(
+    supplies: np.ndarray,
+    demands: np.ndarray,
+    cost: np.ndarray,
+) -> tuple[np.ndarray, float]:
+    """Solve optimal transport between two small discrete distributions."""
+    supplies = np.asarray(supplies, dtype=float)
+    demands = np.asarray(demands, dtype=float)
+    cost = np.asarray(cost, dtype=float)
+
+    if supplies.ndim != 1 or demands.ndim != 1 or cost.shape != (len(supplies), len(demands)):
+        raise ValueError("Invalid EMD shapes.")
+
+    total_supply = float(supplies.sum())
+    total_demand = float(demands.sum())
+    if total_supply <= 0 or total_demand <= 0:
+        raise ValueError("EMD requires positive total mass in both histograms.")
+
+    supplies = supplies / total_supply
+    demands = demands / total_demand
+
+    n, m = len(supplies), len(demands)
+    if n == 2 and m == 2:
+        s0, s1 = supplies
+        d0, d1 = demands
+        lo = max(0.0, s0 - d1)
+        hi = min(s0, d0)
+        best_flow = np.zeros((2, 2), dtype=float)
+        best_cost = float("inf")
+        for f00 in (lo, hi):
+            f01 = s0 - f00
+            f10 = d0 - f00
+            f11 = d1 - f01
+            if min(f01, f10, f11) < -1e-12:
+                continue
+            flow = np.array([[f00, f01], [f10, f11]], dtype=float)
+            total = float(np.sum(flow * cost))
+            if total < best_cost:
+                best_cost = total
+                best_flow = flow
+        if not np.isfinite(best_cost):
+            raise RuntimeError("EMD solver failed to find a feasible 2×2 transport plan.")
+        return best_flow, best_cost
+
+    # Fallback for larger tiny problems: enumerate extreme points via northwest-corner pivots.
+    flow = np.zeros((n, m), dtype=float)
+    remaining_supply = supplies.copy()
+    remaining_demand = demands.copy()
+    i = 0
+    j = 0
+    while i < n and j < m:
+        amount = min(remaining_supply[i], remaining_demand[j])
+        flow[i, j] = amount
+        remaining_supply[i] -= amount
+        remaining_demand[j] -= amount
+        if remaining_supply[i] <= 1e-12:
+            i += 1
+        if remaining_demand[j] <= 1e-12:
+            j += 1
+
+    # Northwest-corner is not always optimal; refine with pairwise swaps when small.
+    improved = True
+    while improved:
+        improved = False
+        for i0 in range(n):
+            for j0 in range(m):
+                for i1 in range(n):
+                    for j1 in range(m):
+                        if i0 == i1 and j0 == j1:
+                            continue
+                        delta = min(flow[i0, j0], flow[i1, j1])
+                        if delta <= 1e-12:
+                            continue
+                        before = (
+                            delta * cost[i0, j0]
+                            + delta * cost[i1, j1]
+                        )
+                        after = (
+                            delta * cost[i0, j1]
+                            + delta * cost[i1, j0]
+                        )
+                        if after + 1e-12 < before:
+                            flow[i0, j0] -= delta
+                            flow[i1, j1] -= delta
+                            flow[i0, j1] += delta
+                            flow[i1, j0] += delta
+                            improved = True
+
+    emd_score = float(np.sum(flow * cost))
+    return flow, emd_score
+
+
+def _build_subcube_moves(
+    source_voxels: list[VoxelBin],
+    target_voxels: list[VoxelBin],
+    flow: np.ndarray,
+    supplies: np.ndarray,
+    grid: int,
+    metric: str,
+) -> tuple[list[SubCube], float]:
+    source_grids = [
+        _subdivide_voxel_grid(voxel, grid, float(voxel.count))
+        for voxel in source_voxels
+    ]
+    target_grids = [
+        _subdivide_voxel_grid(voxel, grid, float(voxel.count))
+        for voxel in target_voxels
+    ]
+
+    planned: list[
+        tuple[
+            tuple[float, float, float],
+            tuple[float, float, float],
+            tuple[float, float, float],
+            tuple[float, float, float],
+            tuple[float, float, float],
+            int,
+            int,
+        ]
+    ] = []
+    dest_cursor = [0] * len(target_voxels)
+
+    for src_idx, (src_voxel, src_cells) in enumerate(zip(source_voxels, source_grids)):
+        source_mass = float(supplies[src_idx])
+        dest_allocations = _allocate_destinations_for_source(
+            flow[src_idx], source_mass, len(src_cells)
+        )
+        dest_allocations = _interleave_destination_labels(dest_allocations)
+
+        for (src_center, size), dst_idx in zip(src_cells, dest_allocations):
+            dst_cells = target_grids[dst_idx]
+            dst_slot = dest_cursor[dst_idx] % len(dst_cells)
+            dst_center, _ = dst_cells[dst_slot]
+            dest_cursor[dst_idx] += 1
+            planned.append(
+                (src_center, dst_center, size, src_voxel.bin_color, target_voxels[dst_idx].bin_color, src_idx, dst_idx)
+            )
+
+    pair_counts: dict[tuple[int, int], int] = {}
+    for *_, src_idx, dst_idx in planned:
+        key = (src_idx, dst_idx)
+        pair_counts[key] = pair_counts.get(key, 0) + 1
+
+    moves: list[SubCube] = []
+    total_cost = 0.0
+    for src_center, dst_center, size, src_color, dst_color, src_idx, dst_idx in planned:
+        src_voxel = source_voxels[src_idx]
+        dst_voxel = target_voxels[dst_idx]
+        dist = _rgb_ground_distance(
+            (src_voxel.r_center, src_voxel.g_center, src_voxel.b_center),
+            (dst_voxel.r_center, dst_voxel.g_center, dst_voxel.b_center),
+            metric,
+        )
+        pair_cost = float(flow[src_idx, dst_idx]) * dist
+        pair_size = pair_counts[(src_idx, dst_idx)]
+        move_cost = pair_cost / pair_size if pair_size > 0 else 0.0
+        sub_mass = float(src_voxel.count) / (grid ** 3)
+        total_cost += move_cost
+        moves.append(
+            SubCube(
+                src_center=src_center,
+                dst_center=dst_center,
+                size=size,
+                src_color=src_color,
+                dst_color=dst_color,
+                mass=sub_mass,
+                move_cost=move_cost,
+                src_idx=src_idx,
+                dst_idx=dst_idx,
+            )
+        )
+
+    moves = _interleave_moves(moves)
+    return moves, total_cost
+
+
+def _voxel_size(voxel: VoxelBin) -> tuple[float, float, float]:
+    return (voxel.dr, voxel.dg, voxel.db)
+
+
+def _emd_bin_fill_alpha(fill_fraction: float, count: float, mode: float) -> float:
+    weight = _display_opacity(count, mode)
+    frac = float(np.clip(fill_fraction, 0.0, 1.0))
+    return float(np.clip(0.1 + 0.75 * frac * weight, 0.0, 1.0))
+
+
+def _build_bin_flow_moves(
+    source_voxels: list[VoxelBin],
+    target_voxels: list[VoxelBin],
+    flow: np.ndarray,
+    supplies: np.ndarray,
+    metric: str,
+) -> tuple[list[SubCube], float]:
+    """One animated move per source→target pair with positive optimal flow."""
+    raw_total = float(np.sum(supplies))
+    moves: list[SubCube] = []
+    total_cost = 0.0
+
+    for src_idx, src_voxel in enumerate(source_voxels):
+        source_mass = float(supplies[src_idx])
+        src_center = (src_voxel.r_center, src_voxel.g_center, src_voxel.b_center)
+        for dst_idx, dst_voxel in enumerate(target_voxels):
+            flow_ij = float(flow[src_idx, dst_idx])
+            if flow_ij <= 1e-9:
+                continue
+
+            dst_center = (dst_voxel.r_center, dst_voxel.g_center, dst_voxel.b_center)
+            dist = _rgb_ground_distance(src_center, dst_center, metric)
+            move_cost = flow_ij * dist
+            total_cost += move_cost
+
+            size = _voxel_size(src_voxel)
+            moves.append(
+                SubCube(
+                    src_center=src_center,
+                    dst_center=dst_center,
+                    size=size,
+                    src_color=src_voxel.bin_color,
+                    dst_color=dst_voxel.bin_color,
+                    mass=flow_ij * raw_total,
+                    move_cost=move_cost,
+                    src_idx=src_idx,
+                    dst_idx=dst_idx,
+                )
+            )
+
+    moves = _interleave_moves(moves)
+    return moves, total_cost
+
+
+def _draw_voxel_fill(
+    ax,
+    voxel: VoxelBin,
+    color: tuple[float, float, float],
+    *,
+    alpha: float,
+    edgecolor: str | None = None,
+) -> None:
+    ax.bar3d(
+        voxel.r0,
+        voxel.g0,
+        voxel.b0,
+        voxel.dr,
+        voxel.dg,
+        voxel.db,
+        color=[color],
+        edgecolor=edgecolor if edgecolor is not None else "none",
+        linewidth=0.0,
+        shade=False,
+        alpha=alpha,
+    )
+
+
+def _compute_emd_bin_mass_state(
+    moves: list[SubCube],
+    initial_source: np.ndarray,
+    initial_dest: np.ndarray,
+    completed: int,
+    progress: float,
+) -> tuple[np.ndarray, np.ndarray]:
+    remaining = initial_source.astype(float).copy()
+    arrived = np.zeros(len(initial_dest), dtype=float)
+    for idx, move in enumerate(moves):
+        if idx < completed:
+            remaining[move.src_idx] -= move.mass
+            arrived[move.dst_idx] += move.mass
+        elif idx == completed and progress > 0.0:
+            remaining[move.src_idx] -= move.mass * progress
+    return np.clip(remaining, 0.0, None), np.clip(arrived, 0.0, None)
+
+
+def _format_emd_count(value: float) -> str:
+    if float(value).is_integer():
+        return str(int(value))
+    return f"{value:.3f}"
+
+
+def _emd_bin_count_caption(
+    source_voxels: list[VoxelBin],
+    target_voxels: list[VoxelBin],
+    remaining_source: np.ndarray,
+    arrived_dest: np.ndarray,
+) -> str:
+    src_parts = [
+        f"S{i + 1} {_format_emd_count(remaining_source[i])}/{_format_emd_count(source_voxels[i].count)}"
+        for i in range(len(source_voxels))
+    ]
+    dst_parts = [
+        f"T{j + 1} {_format_emd_count(arrived_dest[j])}/{_format_emd_count(target_voxels[j].count)}"
+        for j in range(len(target_voxels))
+    ]
+    return "Sources left: " + ", ".join(src_parts) + " | Targets filled: " + ", ".join(dst_parts)
+
+
+def _draw_subcube(ax, center: tuple[float, float, float], size: tuple[float, float, float], color, *, alpha: float, edgecolor: str = "black") -> None:
+    r, g, b = center
+    dr, dg, db = size
+    ax.bar3d(
+        r - dr * 0.5,
+        g - dg * 0.5,
+        b - db * 0.5,
+        dr,
+        dg,
+        db,
+        color=[color],
+        edgecolor=edgecolor,
+        linewidth=0.4,
+        shade=False,
+        alpha=alpha,
+    )
+
+
+def _draw_voxel_outline(ax, voxel: VoxelBin, *, color: str, alpha: float, linewidth: float) -> None:
+    x0, x1 = voxel.r0, voxel.r0 + voxel.dr
+    y0, y1 = voxel.g0, voxel.g0 + voxel.dg
+    z0, z1 = voxel.b0, voxel.b0 + voxel.db
+    corners = (
+        (x0, y0, z0), (x1, y0, z0), (x1, y1, z0), (x0, y1, z0),
+        (x0, y0, z1), (x1, y0, z1), (x1, y1, z1), (x0, y1, z1),
+    )
+    edge_pairs = (
+        (0, 1), (1, 2), (2, 3), (3, 0),
+        (4, 5), (5, 6), (6, 7), (7, 4),
+        (0, 4), (1, 5), (2, 6), (3, 7),
+    )
+    for a, b in edge_pairs:
+        ax.plot(
+            (corners[a][0], corners[b][0]),
+            (corners[a][1], corners[b][1]),
+            (corners[a][2], corners[b][2]),
+            color=color,
+            alpha=alpha,
+            linewidth=linewidth,
+        )
+
+
+def visualize_emd_transport(
+    image_a: Path,
+    image_b: Path,
+    hist_a: np.ndarray,
+    hist_b: np.ndarray,
+    bin_edges: list[np.ndarray],
+    *,
+    output_path: Path,
+    grid: int,
+    fps: int,
+    top_k: int,
+    metric: str,
+    bins_only: bool,
+    show: bool,
+) -> None:
+    import os
+
+    os.environ.setdefault("MPLBACKEND", "Agg")
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from matplotlib.animation import PillowWriter
+    from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
+
+    source_voxels = _top_k_voxels(hist_a, bin_edges, top_k)
+    target_voxels = _top_k_voxels(hist_b, bin_edges, top_k)
+    if len(source_voxels) < top_k or len(target_voxels) < top_k:
+        raise RuntimeError(
+            f"Each histogram needs at least {top_k} occupied bins for EMD visualization "
+            f"(found {len(source_voxels)} and {len(target_voxels)})."
+        )
+
+    supplies = np.array([v.count for v in source_voxels], dtype=float)
+    demands = np.array([v.count for v in target_voxels], dtype=float)
+    src_centers = [(v.r_center, v.g_center, v.b_center) for v in source_voxels]
+    dst_centers = [(v.r_center, v.g_center, v.b_center) for v in target_voxels]
+    cost = np.array(
+        [[_rgb_ground_distance(s, d, metric) for d in dst_centers] for s in src_centers],
+        dtype=float,
+    )
+    flow, emd_score = _compute_emd_flow(supplies, demands, cost)
+    supplies_norm = supplies / supplies.sum()
+    if bins_only:
+        moves, animated_cost = _build_bin_flow_moves(
+            source_voxels, target_voxels, flow, supplies, metric
+        )
+    else:
+        moves, animated_cost = _build_subcube_moves(
+            source_voxels, target_voxels, flow, supplies_norm, grid, metric
+        )
+
+    initial_source = np.array([v.count for v in source_voxels], dtype=float)
+    initial_dest = np.array([v.count for v in target_voxels], dtype=float)
+    source_mode = float(initial_source.max()) if initial_source.size else 1.0
+    dest_mode = float(initial_dest.max()) if initial_dest.size else 1.0
+
+    metric_label = "L2 (Euclidean)" if metric == "euclidean" else "L1 (Manhattan)"
+    print(f"EMD between top-{top_k} bins ({image_a.name} → {image_b.name}, {metric_label}): {emd_score:.4f}")
+    print("Source bin counts:", ", ".join(_format_emd_count(v.count) for v in source_voxels))
+    print("Target bin counts:", ", ".join(_format_emd_count(v.count) for v in target_voxels))
+    print("Optimal flow (source bin → target bin):")
+    for i, src in enumerate(source_voxels):
+        for j, dst in enumerate(target_voxels):
+            if flow[i, j] > 1e-6:
+                print(
+                    f"  bin {i + 1} (RGB≈{src.r_center:.0f},{src.g_center:.0f},{src.b_center:.0f}) "
+                    f"→ bin {j + 1} (RGB≈{dst.r_center:.0f},{dst.g_center:.0f},{dst.b_center:.0f}): "
+                    f"flow={flow[i, j]:.4f}"
+                )
+    if bins_only:
+        print(f"Animating {len(moves)} bin-level flow moves (no sub-cubes).")
+    else:
+        print(f"Animating {len(moves)} sub-cube moves on a {grid}×{grid}×{grid} grid per bin.")
+
+    frames_per_move = 5
+    fig = plt.figure(figsize=(11, 8))
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    writer = PillowWriter(fps=fps)
+    writer.setup(fig, str(output_path), dpi=fig.dpi)
+
+    def render_frame(completed: int, progress: float, running_cost: float):
+        fig.clear()
+        ax = fig.add_subplot(111, projection="3d")
+        _draw_outer_cube_wireframe(ax)
+
+        remaining_source, arrived_dest = _compute_emd_bin_mass_state(
+            moves, initial_source, initial_dest, completed, progress
+        )
+
+        for j, voxel in enumerate(target_voxels):
+            demand_frac = _display_opacity(float(initial_dest[j]), dest_mode)
+            arrived_frac = float(
+                np.clip(
+                    arrived_dest[j] / initial_dest[j] if initial_dest[j] > 0 else 0.0,
+                    0.0,
+                    1.0,
+                )
+            )
+            _draw_voxel_outline(
+                ax,
+                voxel,
+                color="#1f77b4",
+                alpha=0.2 + 0.55 * demand_frac,
+                linewidth=1.2,
+            )
+            if arrived_frac > 1e-3:
+                fill_alpha = _emd_bin_fill_alpha(arrived_frac, float(initial_dest[j]), dest_mode)
+                _draw_voxel_fill(ax, voxel, voxel.bin_color, alpha=fill_alpha)
+
+        for i, voxel in enumerate(source_voxels):
+            supply_frac = _display_opacity(float(initial_source[i]), source_mode)
+            remaining_frac = float(
+                np.clip(
+                    remaining_source[i] / initial_source[i] if initial_source[i] > 0 else 0.0,
+                    0.0,
+                    1.0,
+                )
+            )
+            if remaining_frac > 1e-3:
+                fill_alpha = _emd_bin_fill_alpha(remaining_frac, float(initial_source[i]), source_mode)
+                _draw_voxel_fill(ax, voxel, voxel.bin_color, alpha=fill_alpha)
+            _draw_voxel_outline(
+                ax,
+                voxel,
+                color="#d62728",
+                alpha=float(np.clip(0.25 + 0.65 * remaining_frac * supply_frac, 0.0, 1.0)),
+                linewidth=1.0 + 1.5 * remaining_frac,
+            )
+
+        for idx, move in enumerate(moves):
+            if bins_only:
+                if idx == completed and progress > 0.0:
+                    t = progress
+                    interp = tuple(
+                        (1.0 - t) * s + t * d
+                        for s, d in zip(move.src_center, move.dst_center)
+                    )
+                    interp_color = _lerp_rgb(move.src_color, move.dst_color, t)
+                    src_alpha = _emd_bin_fill_alpha(
+                        1.0, float(initial_source[move.src_idx]), source_mode
+                    )
+                    future_arrived = arrived_dest[move.dst_idx] + move.mass
+                    future_frac = float(
+                        np.clip(
+                            future_arrived / initial_dest[move.dst_idx]
+                            if initial_dest[move.dst_idx] > 0
+                            else 0.0,
+                            0.0,
+                            1.0,
+                        )
+                    )
+                    dst_alpha = _emd_bin_fill_alpha(
+                        future_frac, float(initial_dest[move.dst_idx]), dest_mode
+                    )
+                    blob_alpha = float(np.clip((1.0 - t) * src_alpha + t * dst_alpha, 0.0, 1.0))
+                    _draw_subcube(
+                        ax,
+                        interp,
+                        move.size,
+                        interp_color,
+                        alpha=blob_alpha,
+                        edgecolor="#ff7f0e",
+                    )
+                continue
+
+            src_remaining_frac = float(
+                np.clip(
+                    remaining_source[move.src_idx] / initial_source[move.src_idx]
+                    if initial_source[move.src_idx] > 0
+                    else 0.0,
+                    0.0,
+                    1.0,
+                )
+            )
+            dst_arrived_frac = float(
+                np.clip(
+                    arrived_dest[move.dst_idx] / initial_dest[move.dst_idx]
+                    if initial_dest[move.dst_idx] > 0
+                    else 0.0,
+                    0.0,
+                    1.0,
+                )
+            )
+            if idx < completed:
+                cube_alpha = float(np.clip(0.35 + 0.6 * dst_arrived_frac, 0.0, 1.0))
+                _draw_subcube(ax, move.dst_center, move.size, move.dst_color, alpha=cube_alpha)
+            elif idx == completed and progress > 0.0:
+                t = progress
+                interp = tuple(
+                    (1.0 - t) * s + t * d
+                    for s, d in zip(move.src_center, move.dst_center)
+                )
+                interp_color = _lerp_rgb(move.src_color, move.dst_color, t)
+                _draw_subcube(ax, interp, move.size, interp_color, alpha=0.95, edgecolor="#ff7f0e")
+            else:
+                cube_alpha = float(np.clip(0.25 + 0.65 * src_remaining_frac, 0.0, 1.0))
+                _draw_subcube(ax, move.src_center, move.size, move.src_color, alpha=cube_alpha)
+
+        _apply_bin_axis_ticks_matplotlib(ax, bin_edges)
+        ax.set_xlabel("Red")
+        ax.set_ylabel("Green")
+        ax.set_zlabel("Blue")
+        ax.set_xlim(float(bin_edges[2][0]), float(bin_edges[2][-1]))
+        ax.set_ylim(float(bin_edges[1][0]), float(bin_edges[1][-1]))
+        ax.set_zlim(float(bin_edges[0][0]), float(bin_edges[0][-1]))
+        ax.view_init(elev=24, azim=-58)
+        move_label = (
+            f"Flow {min(completed + 1, len(moves))}/{len(moves)}"
+            if bins_only
+            else f"Move {min(completed + 1, len(moves))}/{len(moves)} ({grid}×{grid}×{grid} sub-cubes per bin)"
+        )
+        ax.set_title(
+            f"Earth Mover's Distance — top-{top_k} bins ({metric_label})\n"
+            f"{image_a.name} → {image_b.name} | "
+            f"EMD: {running_cost:.4f} / {emd_score:.4f}\n"
+            f"{move_label}\n"
+            f"{_emd_bin_count_caption(source_voxels, target_voxels, remaining_source, arrived_dest)}",
+            fontsize=10,
+        )
+        fig.subplots_adjust(left=0.02, right=0.98, bottom=0.02, top=0.9)
+        return ax
+
+    running_cost = 0.0
+    render_frame(0, 0.0, running_cost)
+    fig.canvas.draw()
+    writer.grab_frame()
+
+    for move_idx, move in enumerate(moves):
+        for step in range(1, frames_per_move + 1):
+            progress = step / frames_per_move
+            render_frame(move_idx, progress, running_cost + move.move_cost * progress)
+            fig.canvas.draw()
+            writer.grab_frame()
+        running_cost += move.move_cost
+
+    render_frame(len(moves), 0.0, emd_score)
+    fig.canvas.draw()
+    for _ in range(fps):
+        writer.grab_frame()
+    writer.finish()
+
+    print(f"Saved EMD animation to {output_path}")
+    print(f"Animated transport cost tally: {animated_cost:.4f} (solver EMD: {emd_score:.4f})")
+
+    if show:
+        os.environ.pop("MPLBACKEND", None)
+        plt.show()
+    else:
+        plt.close(fig)
+
+
 def _format_bin_range_label(lo: float, hi: float) -> str:
     lo_i = int(round(lo))
     hi_i = int(round(hi))
@@ -935,6 +1728,49 @@ def parse_args() -> argparse.Namespace:
         action="store_false",
         help="Hide count labels on occupied bins",
     )
+    parser.add_argument(
+        "--emd",
+        type=Path,
+        default=None,
+        metavar="IMAGE2",
+        help="Visualize Earth Mover's Distance against a second image (sub-cube transport)",
+    )
+    parser.add_argument(
+        "--emd-top-k",
+        type=int,
+        default=4,
+        metavar="N",
+        help="Use the N most prevalent bins from each histogram for EMD (default: 2)",
+    )
+    parser.add_argument(
+        "--emd-output",
+        type=Path,
+        default=None,
+        help="Save EMD transport animation (.gif). Required with --emd unless --show is set.",
+    )
+    parser.add_argument(
+        "--emd-grid",
+        type=int,
+        default=4,
+        help="With --emd-subcubes: subdivide each top bin into N×N×N sub-cubes (default: 4)",
+    )
+    parser.add_argument(
+        "--emd-subcubes",
+        action="store_true",
+        help="Animate EMD with a sub-cube grid inside each bin (see --emd-grid)",
+    )
+    parser.add_argument(
+        "--emd-fps",
+        type=int,
+        default=4,
+        help="Frames per second for the EMD animation (default: 8)",
+    )
+    parser.add_argument(
+        "--emd-metric",
+        choices=("euclidean", "manhattan"),
+        default="euclidean",
+        help="Ground distance between RGB bin centers for EMD (default: euclidean)",
+    )
     return parser.parse_args()
 
 
@@ -959,6 +1795,71 @@ def main() -> int:
     if image_bgr is None:
         print(f"Error: failed to read image: {args.image}", file=sys.stderr)
         return 1
+
+    if args.emd is not None:
+        if args.hist_1d or args.hist_rgb_1d:
+            print("Error: --emd requires 3D color histograms (do not use --1d or --rgb-1d).", file=sys.stderr)
+            return 1
+        if not args.emd.is_file():
+            print(f"Error: second image not found: {args.emd}", file=sys.stderr)
+            return 1
+        if args.emd_grid <= 0:
+            print("Error: --emd-grid must be positive.", file=sys.stderr)
+            return 1
+        if args.emd_subcubes and args.emd_grid < 2:
+            print("Error: --emd-grid must be at least 2 when using --emd-subcubes.", file=sys.stderr)
+            return 1
+        if args.emd_fps <= 0:
+            print("Error: --emd-fps must be positive.", file=sys.stderr)
+            return 1
+        if args.emd_top_k <= 0:
+            print("Error: --emd-top-k must be positive.", file=sys.stderr)
+            return 1
+        if args.emd_output is None and not args.show:
+            print("Error: use --emd-output PATH and/or --show with --emd.", file=sys.stderr)
+            return 1
+
+        image_bgr_b = cv2.imread(str(args.emd), cv2.IMREAD_COLOR)
+        if image_bgr_b is None:
+            print(f"Error: failed to read image: {args.emd}", file=sys.stderr)
+            return 1
+
+        hist_a, bin_edges = compute_3d_histogram(image_bgr, num_bins, normalize=not args.no_normalize)
+        hist_b, _bin_edges_b = compute_3d_histogram(image_bgr_b, num_bins, normalize=not args.no_normalize)
+        if hist_a.shape != hist_b.shape:
+            print("Error: histogram shapes differ; use the same --bins for both images.", file=sys.stderr)
+            return 1
+
+        print(f"Image A: {args.image.name} ({image_bgr.shape[1]}x{image_bgr.shape[0]})")
+        print(f"Image B: {args.emd.name} ({image_bgr_b.shape[1]}x{image_bgr_b.shape[0]})")
+        print(f"Bins per channel: {num_bins} ({num_bins}³ total bins)")
+        if args.emd_subcubes:
+            print(f"EMD mode: sub-cube grid ({args.emd_grid}×{args.emd_grid}×{args.emd_grid})")
+        else:
+            print("EMD mode: bin-level flows (no sub-cubes)")
+        print(f"EMD top bins per image: {args.emd_top_k}")
+        print(f"EMD ground metric: {args.emd_metric}")
+
+        try:
+            output_path = args.emd_output or Path(f"emd_{args.image.stem}_to_{args.emd.stem}.gif")
+            visualize_emd_transport(
+                args.image,
+                args.emd,
+                hist_a,
+                hist_b,
+                bin_edges,
+                output_path=output_path,
+                grid=args.emd_grid,
+                fps=args.emd_fps,
+                top_k=args.emd_top_k,
+                metric=args.emd_metric,
+                bins_only=not args.emd_subcubes,
+                show=args.show,
+            )
+        except (RuntimeError, ValueError) as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            return 1
+        return 0
 
     if args.save_grayscale is not None:
         gray = save_grayscale_image(image_bgr, args.save_grayscale)

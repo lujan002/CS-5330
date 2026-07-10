@@ -129,6 +129,19 @@ project4/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/project4.dir/build.make CMakeFiles/project4.dir/build
 .PHONY : project4/fast
 
+#=============================================================================
+# Target rules for targets named harris
+
+# Build rule for target.
+harris: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 harris
+.PHONY : harris
+
+# fast build rule for target.
+harris/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/harris.dir/build.make CMakeFiles/harris.dir/build
+.PHONY : harris/fast
+
 src/gl_renderer.o: src/gl_renderer.cpp.o
 .PHONY : src/gl_renderer.o
 
@@ -152,6 +165,30 @@ src/gl_renderer.s: src/gl_renderer.cpp.s
 src/gl_renderer.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/project4.dir/build.make CMakeFiles/project4.dir/src/gl_renderer.cpp.s
 .PHONY : src/gl_renderer.cpp.s
+
+src/harris_corner.o: src/harris_corner.cpp.o
+.PHONY : src/harris_corner.o
+
+# target to build an object file
+src/harris_corner.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/harris.dir/build.make CMakeFiles/harris.dir/src/harris_corner.cpp.o
+.PHONY : src/harris_corner.cpp.o
+
+src/harris_corner.i: src/harris_corner.cpp.i
+.PHONY : src/harris_corner.i
+
+# target to preprocess a source file
+src/harris_corner.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/harris.dir/build.make CMakeFiles/harris.dir/src/harris_corner.cpp.i
+.PHONY : src/harris_corner.cpp.i
+
+src/harris_corner.s: src/harris_corner.cpp.s
+.PHONY : src/harris_corner.s
+
+# target to generate assembly for a file
+src/harris_corner.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/harris.dir/build.make CMakeFiles/harris.dir/src/harris_corner.cpp.s
+.PHONY : src/harris_corner.cpp.s
 
 src/main.o: src/main.cpp.o
 .PHONY : src/main.o
@@ -209,10 +246,14 @@ help:
 	@echo "... depend"
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
+	@echo "... harris"
 	@echo "... project4"
 	@echo "... src/gl_renderer.o"
 	@echo "... src/gl_renderer.i"
 	@echo "... src/gl_renderer.s"
+	@echo "... src/harris_corner.o"
+	@echo "... src/harris_corner.i"
+	@echo "... src/harris_corner.s"
 	@echo "... src/main.o"
 	@echo "... src/main.i"
 	@echo "... src/main.s"
