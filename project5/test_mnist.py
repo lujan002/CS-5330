@@ -77,10 +77,12 @@ def main(argv):
         labels = []
         for filename in image_filenames:
             # filename like custom_7_resize.jpeg → label 7
-            digit = int(filename.split("_")[1])
+            digit = int(filename.split("_")[1]) # get integer 
             img_path = os.path.join(custom_digits_dir, filename)
             # Force exact MNIST size — *_resize files are close but not always 28x28
             img = Image.open(img_path).convert("L").resize((28, 28))
+            # Apply quantization: set to 0 if pixel < 128, else 255
+            img = img.point(lambda p: 255 if p > 128 else p)
             # Invert: handwritten digits are black-on-white; MNIST is white-on-black
             img_tensor = 1.0 - (torch.tensor(np.array(img), dtype=torch.float32).unsqueeze(0) / 255.0)
             images.append(img_tensor)

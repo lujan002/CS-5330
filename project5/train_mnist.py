@@ -8,6 +8,7 @@ from torch import nn
 from torch.utils.data import DataLoader
 from torchvision import datasets
 from torchvision.transforms import v2
+from NetTransformer import NetConfig, PatchEmbedding, NetTransformer # import custom class
 
 import matplotlib.pyplot as plt
 
@@ -32,7 +33,8 @@ class MyNetwork(nn.Module):
             nn.Linear(in_features = 320, out_features = 50), # Linear layers are by default fully connected. 50 nodes
             nn.ReLU(),
             nn.Linear(50, 10),
-            nn.LogSoftmax(),
+            nn.LogSoftmax(), # Remove because we have CrossEntropyLoss, which 
+            # automatically applies LogSoftmax to the output
         )
 
     # METHODS
@@ -66,7 +68,7 @@ def train_network(device, dataloader, model, loss_fn, optimizer, train_loss_hist
             print(f"loss: {loss_val:>7f} [{examples_seen:>5d}/{size:>5d}]")
             train_loss_history.append((loss_val, examples_seen))
     return examples_seen
-            
+
 def test_network(device, dataloader, model, loss_fn, test_loss_history, examples_seen):
     size = len(dataloader.dataset)
     num_batches = len(dataloader)
@@ -94,6 +96,17 @@ def main(argv):
         action = "store_true",
         help = "Print the first 6 digits from the test set"
     )
+    parser.add_argument(
+        "--use-transformer",
+        action = "store_true",
+        help = "Use a transformer model"
+    )
+    parser.add_argument(
+        "--epochs",
+        type = int,
+        default = 5,
+        help = "Number of epochs to train for (only for non-transformer model)"
+    )
     args = parser.parse_args(argv[1:]) # skip script name
 
 
@@ -101,7 +114,11 @@ def main(argv):
     print(f"using {device} device")
 
     # main function code
-    model = MyNetwork().to(device)
+    if args.use_transformer:
+        model_config = NetConfig() # Use defaults
+        model = NetTransformer(model_config).to(device)
+    else:
+        model = MyNetwork().to(device)
     print(model)
 
     training_data = datasets.MNIST(
@@ -131,7 +148,6 @@ def main(argv):
         plt.show()
         return
 
-
     batch_size = 64
 
     # Create data loaders
@@ -140,13 +156,19 @@ def main(argv):
     # X - input images [N, C, H, W]: (torch.Size([64, 1, 28, 28])
     # y - ground truth labels: (torch.Size([64]) torch.int64)
     
-    loss_fn = nn.CrossEntropyLoss()
-    optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
+    loss_fn = nn.NLLLoss()
     
-    epochs = 5
+    if args.use_transformer:
+        epochs = model_config.epochs
+        optimizer = torch.optim.AdamW(model.parameters(), lr=model_config.lr, weight_decay=model_config.weight_decay)
+    else:
+        epochs = args.epochs
+        optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
+
     train_loss_history = []
     test_loss_history = []
     examples_seen = 0
+
     for t in range(epochs):
         print(f"Epoch {t+1}\n---------------------------------------")
         examples_seen = train_network(
