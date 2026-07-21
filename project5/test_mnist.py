@@ -15,6 +15,7 @@ from torch import nn
 from train_mnist import MyNetwork # import custom class
 from torch.utils.data import Subset
 from torch.utils.data import TensorDataset, DataLoader
+from NetTransformer import NetConfig, NetTransformer # import custom class
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -54,12 +55,20 @@ def main(argv):
         action = "store_true",
         help = "Use custom digits for the test set"
     )
+    parser.add_argument(
+        "--use-transformer",
+        action = "store_true",
+        help = "Use a transformer model"
+    )
     args = parser.parse_args(argv[1:]) # skip script name
 
 
     # import model 
-
-    model = MyNetwork()
+    if args.use_transformer:
+        model_config = NetConfig() # Use defaults
+        model = NetTransformer(model_config).to(device)
+    else:
+        model = MyNetwork()
     model.load_state_dict(torch.load("model.pth", map_location="cpu"))
 
     device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"

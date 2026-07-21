@@ -280,9 +280,10 @@ class NetTransformer(nn.Module):
     """
     def forward( self, x ):
         # This function needs to be completed.  Each empty comment is one command.
+        # X is an instance of the NetTransformer class
 
         # execute the patch embedding layer
-        x = PatchEmbedding.forward(x)
+        x = self.patch_embed(x)
 
         # get the batch size (0 dimension of x)
         batch_size = x.size(0)
@@ -293,10 +294,11 @@ class NetTransformer(nn.Module):
             x = torch.cat( [cls_token, x], dim = 1 )
 
         # add the learnable positional embedding to each token
-        
+        x = x + self.pos_embed
         # run the dropout layer right after the patch embedding
-        
+        x = self.pos_dropout(x)
         # run the transformer encoder
+        x = self.encoder(x)
 
         # either pool the tokens or use the cls token (first token)
         if self.use_cls_token:
@@ -305,9 +307,9 @@ class NetTransformer(nn.Module):
             x = x.mean(dim=1) # classify using the mean token vector
 
         # final normalization of the token to classify
-
+        x = self.norm(x)
         # call the classification MLP
-
+        x = self.classifier(x)
         # return the softmax of the output layer
         return F.log_softmax( x, dim=1 ) # return softmax of the output layer
 

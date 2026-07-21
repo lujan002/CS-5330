@@ -8,7 +8,7 @@ from torch import nn
 from torch.utils.data import DataLoader
 from torchvision import datasets
 from torchvision.transforms import v2
-from NetTransformer import NetConfig, PatchEmbedding, NetTransformer # import custom class
+from NetTransformer import NetConfig, NetTransformer # import custom class
 
 import matplotlib.pyplot as plt
 
