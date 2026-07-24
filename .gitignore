@@ -4,3 +4,4 @@ __pycache__/
 *.mp4
 project4/models/
 /color_histogram.py
+*/data/
