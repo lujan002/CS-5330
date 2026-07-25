@@ -69,28 +69,28 @@ include CMakeFiles/ar_card.dir/progress.make
 # Include the compile flags for this target's objects.
 include CMakeFiles/ar_card.dir/flags.make
 
-CMakeFiles/ar_card.dir/data/models/main.cpp.o: CMakeFiles/ar_card.dir/flags.make
-CMakeFiles/ar_card.dir/data/models/main.cpp.o: ../data/models/main.cpp
-CMakeFiles/ar_card.dir/data/models/main.cpp.o: CMakeFiles/ar_card.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir="/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/build/CMakeFiles" --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/ar_card.dir/data/models/main.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/ar_card.dir/data/models/main.cpp.o -MF CMakeFiles/ar_card.dir/data/models/main.cpp.o.d -o CMakeFiles/ar_card.dir/data/models/main.cpp.o -c "/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/data/models/main.cpp"
+CMakeFiles/ar_card.dir/main.cpp.o: CMakeFiles/ar_card.dir/flags.make
+CMakeFiles/ar_card.dir/main.cpp.o: ../main.cpp
+CMakeFiles/ar_card.dir/main.cpp.o: CMakeFiles/ar_card.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir="/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/build/CMakeFiles" --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/ar_card.dir/main.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/ar_card.dir/main.cpp.o -MF CMakeFiles/ar_card.dir/main.cpp.o.d -o CMakeFiles/ar_card.dir/main.cpp.o -c "/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/main.cpp"
 
-CMakeFiles/ar_card.dir/data/models/main.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/ar_card.dir/data/models/main.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E "/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/data/models/main.cpp" > CMakeFiles/ar_card.dir/data/models/main.cpp.i
+CMakeFiles/ar_card.dir/main.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/ar_card.dir/main.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E "/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/main.cpp" > CMakeFiles/ar_card.dir/main.cpp.i
 
-CMakeFiles/ar_card.dir/data/models/main.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/ar_card.dir/data/models/main.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S "/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/data/models/main.cpp" -o CMakeFiles/ar_card.dir/data/models/main.cpp.s
+CMakeFiles/ar_card.dir/main.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/ar_card.dir/main.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S "/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/main.cpp" -o CMakeFiles/ar_card.dir/main.cpp.s
 
 # Object files for target ar_card
 ar_card_OBJECTS = \
-"CMakeFiles/ar_card.dir/data/models/main.cpp.o"
+"CMakeFiles/ar_card.dir/main.cpp.o"
 
 # External object files for target ar_card
 ar_card_EXTERNAL_OBJECTS =
 
-ar_card: CMakeFiles/ar_card.dir/data/models/main.cpp.o
+ar_card: CMakeFiles/ar_card.dir/main.cpp.o
 ar_card: CMakeFiles/ar_card.dir/build.make
 ar_card: /usr/lib/x86_64-linux-gnu/libopencv_stitching.so.4.5.4d
 ar_card: /usr/lib/x86_64-linux-gnu/libopencv_alphamat.so.4.5.4d

@@ -129,29 +129,29 @@ ar_card/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/build
 .PHONY : ar_card/fast
 
-data/models/main.o: data/models/main.cpp.o
-.PHONY : data/models/main.o
+main.o: main.cpp.o
+.PHONY : main.o
 
 # target to build an object file
-data/models/main.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/data/models/main.cpp.o
-.PHONY : data/models/main.cpp.o
+main.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/main.cpp.o
+.PHONY : main.cpp.o
 
-data/models/main.i: data/models/main.cpp.i
-.PHONY : data/models/main.i
+main.i: main.cpp.i
+.PHONY : main.i
 
 # target to preprocess a source file
-data/models/main.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/data/models/main.cpp.i
-.PHONY : data/models/main.cpp.i
+main.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/main.cpp.i
+.PHONY : main.cpp.i
 
-data/models/main.s: data/models/main.cpp.s
-.PHONY : data/models/main.s
+main.s: main.cpp.s
+.PHONY : main.s
 
 # target to generate assembly for a file
-data/models/main.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/data/models/main.cpp.s
-.PHONY : data/models/main.cpp.s
+main.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/main.cpp.s
+.PHONY : main.cpp.s
 
 # Help Target
 help:
@@ -162,9 +162,9 @@ help:
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
 	@echo "... ar_card"
-	@echo "... data/models/main.o"
-	@echo "... data/models/main.i"
-	@echo "... data/models/main.s"
+	@echo "... main.o"
+	@echo "... main.i"
+	@echo "... main.s"
 .PHONY : help
 
 

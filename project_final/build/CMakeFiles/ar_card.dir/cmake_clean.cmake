@@ -1,6 +1,6 @@
 file(REMOVE_RECURSE
-  "CMakeFiles/ar_card.dir/data/models/main.cpp.o"
-  "CMakeFiles/ar_card.dir/data/models/main.cpp.o.d"
+  "CMakeFiles/ar_card.dir/main.cpp.o"
+  "CMakeFiles/ar_card.dir/main.cpp.o.d"
   "ar_card"
   "ar_card.pdb"
 )

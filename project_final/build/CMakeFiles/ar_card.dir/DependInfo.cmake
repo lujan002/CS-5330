@@ -8,7 +8,7 @@ set(CMAKE_DEPENDS_LANGUAGES
 
 # The set of dependency files which are needed:
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
-  "/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/data/models/main.cpp" "CMakeFiles/ar_card.dir/data/models/main.cpp.o" "gcc" "CMakeFiles/ar_card.dir/data/models/main.cpp.o.d"
+  "/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/main.cpp" "CMakeFiles/ar_card.dir/main.cpp.o" "gcc" "CMakeFiles/ar_card.dir/main.cpp.o.d"
   )
 
 # Targets to which this target links.
