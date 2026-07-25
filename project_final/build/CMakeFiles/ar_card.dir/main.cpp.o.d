@@ -346,6 +346,8 @@ CMakeFiles/ar_card.dir/main.cpp.o: \
  /usr/include/opencv4/opencv2/video.hpp \
  /usr/include/opencv4/opencv2/video/tracking.hpp \
  /usr/include/opencv4/opencv2/video/background_segm.hpp \
+ /media/ubuntu-22/San\ Disk\ 2TB/Northeastern\ Courses/CS\ 5330/project_final/src/gl_renderer.hpp \
+ /media/ubuntu-22/San\ Disk\ 2TB/Northeastern\ Courses/CS\ 5330/project_final/src/obj_loader.hpp \
  /usr/include/c++/11/fstream \
  /usr/include/x86_64-linux-gnu/c++/11/bits/basic_file.h \
  /usr/include/x86_64-linux-gnu/c++/11/bits/c++io.h \

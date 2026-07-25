@@ -153,6 +153,54 @@ main.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/main.cpp.s
 .PHONY : main.cpp.s
 
+src/gl_renderer.o: src/gl_renderer.cpp.o
+.PHONY : src/gl_renderer.o
+
+# target to build an object file
+src/gl_renderer.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/src/gl_renderer.cpp.o
+.PHONY : src/gl_renderer.cpp.o
+
+src/gl_renderer.i: src/gl_renderer.cpp.i
+.PHONY : src/gl_renderer.i
+
+# target to preprocess a source file
+src/gl_renderer.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/src/gl_renderer.cpp.i
+.PHONY : src/gl_renderer.cpp.i
+
+src/gl_renderer.s: src/gl_renderer.cpp.s
+.PHONY : src/gl_renderer.s
+
+# target to generate assembly for a file
+src/gl_renderer.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/src/gl_renderer.cpp.s
+.PHONY : src/gl_renderer.cpp.s
+
+src/obj_loader.o: src/obj_loader.cpp.o
+.PHONY : src/obj_loader.o
+
+# target to build an object file
+src/obj_loader.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/src/obj_loader.cpp.o
+.PHONY : src/obj_loader.cpp.o
+
+src/obj_loader.i: src/obj_loader.cpp.i
+.PHONY : src/obj_loader.i
+
+# target to preprocess a source file
+src/obj_loader.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/src/obj_loader.cpp.i
+.PHONY : src/obj_loader.cpp.i
+
+src/obj_loader.s: src/obj_loader.cpp.s
+.PHONY : src/obj_loader.s
+
+# target to generate assembly for a file
+src/obj_loader.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/src/obj_loader.cpp.s
+.PHONY : src/obj_loader.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -165,6 +213,12 @@ help:
 	@echo "... main.o"
 	@echo "... main.i"
 	@echo "... main.s"
+	@echo "... src/gl_renderer.o"
+	@echo "... src/gl_renderer.i"
+	@echo "... src/gl_renderer.s"
+	@echo "... src/obj_loader.o"
+	@echo "... src/obj_loader.i"
+	@echo "... src/obj_loader.s"
 .PHONY : help
 
 
