@@ -267,4 +267,6 @@ CMakeFiles/ar_card.dir/src/gl_renderer.cpp.o: \
  /usr/include/opencv4/opencv2/imgcodecs.hpp \
  /usr/include/opencv4/opencv2/imgproc.hpp \
  /usr/include/opencv4/opencv2/imgproc/segmentation.hpp \
- /usr/include/c++/11/iostream
+ /usr/include/c++/11/iostream /usr/include/c++/11/set \
+ /usr/include/c++/11/bits/stl_set.h \
+ /usr/include/c++/11/bits/stl_multiset.h
