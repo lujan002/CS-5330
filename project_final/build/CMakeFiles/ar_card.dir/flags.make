@@ -6,5 +6,5 @@ CXX_DEFINES =
 
 CXX_INCLUDES = -I"/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/src" -isystem /usr/include/opencv4
 
-CXX_FLAGS = -std=gnu++17
+CXX_FLAGS = -O3 -DNDEBUG -std=gnu++17
 

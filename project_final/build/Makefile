@@ -177,6 +177,30 @@ src/gl_renderer.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/src/gl_renderer.cpp.s
 .PHONY : src/gl_renderer.cpp.s
 
+src/model_library.o: src/model_library.cpp.o
+.PHONY : src/model_library.o
+
+# target to build an object file
+src/model_library.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/src/model_library.cpp.o
+.PHONY : src/model_library.cpp.o
+
+src/model_library.i: src/model_library.cpp.i
+.PHONY : src/model_library.i
+
+# target to preprocess a source file
+src/model_library.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/src/model_library.cpp.i
+.PHONY : src/model_library.cpp.i
+
+src/model_library.s: src/model_library.cpp.s
+.PHONY : src/model_library.s
+
+# target to generate assembly for a file
+src/model_library.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/src/model_library.cpp.s
+.PHONY : src/model_library.cpp.s
+
 src/obj_loader.o: src/obj_loader.cpp.o
 .PHONY : src/obj_loader.o
 
@@ -216,6 +240,9 @@ help:
 	@echo "... src/gl_renderer.o"
 	@echo "... src/gl_renderer.i"
 	@echo "... src/gl_renderer.s"
+	@echo "... src/model_library.o"
+	@echo "... src/model_library.i"
+	@echo "... src/model_library.s"
 	@echo "... src/obj_loader.o"
 	@echo "... src/obj_loader.i"
 	@echo "... src/obj_loader.s"
