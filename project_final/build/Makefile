@@ -129,6 +129,19 @@ ar_card/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/build
 .PHONY : ar_card/fast
 
+#=============================================================================
+# Target rules for targets named validate_models
+
+# Build rule for target.
+validate_models: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 validate_models
+.PHONY : validate_models
+
+# fast build rule for target.
+validate_models/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/validate_models.dir/build.make CMakeFiles/validate_models.dir/build
+.PHONY : validate_models/fast
+
 main.o: main.cpp.o
 .PHONY : main.o
 
@@ -159,6 +172,7 @@ src/gl_renderer.o: src/gl_renderer.cpp.o
 # target to build an object file
 src/gl_renderer.cpp.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/src/gl_renderer.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/validate_models.dir/build.make CMakeFiles/validate_models.dir/src/gl_renderer.cpp.o
 .PHONY : src/gl_renderer.cpp.o
 
 src/gl_renderer.i: src/gl_renderer.cpp.i
@@ -167,6 +181,7 @@ src/gl_renderer.i: src/gl_renderer.cpp.i
 # target to preprocess a source file
 src/gl_renderer.cpp.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/src/gl_renderer.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/validate_models.dir/build.make CMakeFiles/validate_models.dir/src/gl_renderer.cpp.i
 .PHONY : src/gl_renderer.cpp.i
 
 src/gl_renderer.s: src/gl_renderer.cpp.s
@@ -175,7 +190,35 @@ src/gl_renderer.s: src/gl_renderer.cpp.s
 # target to generate assembly for a file
 src/gl_renderer.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/src/gl_renderer.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/validate_models.dir/build.make CMakeFiles/validate_models.dir/src/gl_renderer.cpp.s
 .PHONY : src/gl_renderer.cpp.s
+
+src/model_download.o: src/model_download.cpp.o
+.PHONY : src/model_download.o
+
+# target to build an object file
+src/model_download.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/src/model_download.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/validate_models.dir/build.make CMakeFiles/validate_models.dir/src/model_download.cpp.o
+.PHONY : src/model_download.cpp.o
+
+src/model_download.i: src/model_download.cpp.i
+.PHONY : src/model_download.i
+
+# target to preprocess a source file
+src/model_download.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/src/model_download.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/validate_models.dir/build.make CMakeFiles/validate_models.dir/src/model_download.cpp.i
+.PHONY : src/model_download.cpp.i
+
+src/model_download.s: src/model_download.cpp.s
+.PHONY : src/model_download.s
+
+# target to generate assembly for a file
+src/model_download.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/src/model_download.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/validate_models.dir/build.make CMakeFiles/validate_models.dir/src/model_download.cpp.s
+.PHONY : src/model_download.cpp.s
 
 src/model_library.o: src/model_library.cpp.o
 .PHONY : src/model_library.o
@@ -183,6 +226,7 @@ src/model_library.o: src/model_library.cpp.o
 # target to build an object file
 src/model_library.cpp.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/src/model_library.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/validate_models.dir/build.make CMakeFiles/validate_models.dir/src/model_library.cpp.o
 .PHONY : src/model_library.cpp.o
 
 src/model_library.i: src/model_library.cpp.i
@@ -191,6 +235,7 @@ src/model_library.i: src/model_library.cpp.i
 # target to preprocess a source file
 src/model_library.cpp.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/src/model_library.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/validate_models.dir/build.make CMakeFiles/validate_models.dir/src/model_library.cpp.i
 .PHONY : src/model_library.cpp.i
 
 src/model_library.s: src/model_library.cpp.s
@@ -199,6 +244,7 @@ src/model_library.s: src/model_library.cpp.s
 # target to generate assembly for a file
 src/model_library.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/src/model_library.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/validate_models.dir/build.make CMakeFiles/validate_models.dir/src/model_library.cpp.s
 .PHONY : src/model_library.cpp.s
 
 src/obj_loader.o: src/obj_loader.cpp.o
@@ -207,6 +253,7 @@ src/obj_loader.o: src/obj_loader.cpp.o
 # target to build an object file
 src/obj_loader.cpp.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/src/obj_loader.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/validate_models.dir/build.make CMakeFiles/validate_models.dir/src/obj_loader.cpp.o
 .PHONY : src/obj_loader.cpp.o
 
 src/obj_loader.i: src/obj_loader.cpp.i
@@ -215,6 +262,7 @@ src/obj_loader.i: src/obj_loader.cpp.i
 # target to preprocess a source file
 src/obj_loader.cpp.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/src/obj_loader.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/validate_models.dir/build.make CMakeFiles/validate_models.dir/src/obj_loader.cpp.i
 .PHONY : src/obj_loader.cpp.i
 
 src/obj_loader.s: src/obj_loader.cpp.s
@@ -223,7 +271,32 @@ src/obj_loader.s: src/obj_loader.cpp.s
 # target to generate assembly for a file
 src/obj_loader.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/src/obj_loader.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/validate_models.dir/build.make CMakeFiles/validate_models.dir/src/obj_loader.cpp.s
 .PHONY : src/obj_loader.cpp.s
+
+tools/validate_models.o: tools/validate_models.cpp.o
+.PHONY : tools/validate_models.o
+
+# target to build an object file
+tools/validate_models.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/validate_models.dir/build.make CMakeFiles/validate_models.dir/tools/validate_models.cpp.o
+.PHONY : tools/validate_models.cpp.o
+
+tools/validate_models.i: tools/validate_models.cpp.i
+.PHONY : tools/validate_models.i
+
+# target to preprocess a source file
+tools/validate_models.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/validate_models.dir/build.make CMakeFiles/validate_models.dir/tools/validate_models.cpp.i
+.PHONY : tools/validate_models.cpp.i
+
+tools/validate_models.s: tools/validate_models.cpp.s
+.PHONY : tools/validate_models.s
+
+# target to generate assembly for a file
+tools/validate_models.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/validate_models.dir/build.make CMakeFiles/validate_models.dir/tools/validate_models.cpp.s
+.PHONY : tools/validate_models.cpp.s
 
 # Help Target
 help:
@@ -234,18 +307,25 @@ help:
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
 	@echo "... ar_card"
+	@echo "... validate_models"
 	@echo "... main.o"
 	@echo "... main.i"
 	@echo "... main.s"
 	@echo "... src/gl_renderer.o"
 	@echo "... src/gl_renderer.i"
 	@echo "... src/gl_renderer.s"
+	@echo "... src/model_download.o"
+	@echo "... src/model_download.i"
+	@echo "... src/model_download.s"
 	@echo "... src/model_library.o"
 	@echo "... src/model_library.i"
 	@echo "... src/model_library.s"
 	@echo "... src/obj_loader.o"
 	@echo "... src/obj_loader.i"
 	@echo "... src/obj_loader.s"
+	@echo "... tools/validate_models.o"
+	@echo "... tools/validate_models.i"
+	@echo "... tools/validate_models.s"
 .PHONY : help
 
 

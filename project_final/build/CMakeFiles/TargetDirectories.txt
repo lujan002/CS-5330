@@ -1,3 +1,4 @@
 /media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/build/CMakeFiles/ar_card.dir
+/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/build/CMakeFiles/validate_models.dir
 /media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/build/CMakeFiles/edit_cache.dir
 /media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/build/CMakeFiles/rebuild_cache.dir
