@@ -1472,7 +1472,6 @@ CMakeFiles/ar_card.dir/src/model_library.cpp.o: ../src/model_library.cpp \
   /usr/include/c++/11/bits/stl_tree.h \
   /usr/include/c++/11/bits/stl_map.h \
   /usr/include/c++/11/bits/stl_multimap.h \
-  ../src/pokedex_heights.hpp \
   /usr/include/c++/11/filesystem \
   /usr/include/c++/11/bits/fs_fwd.h \
   /usr/include/c++/11/bits/fs_path.h \
@@ -1898,8 +1897,6 @@ CMakeFiles/ar_card.dir/src/obj_loader.cpp.o: ../src/obj_loader.cpp \
 /usr/include/assimp/vector2.h:
 
 /usr/include/assimp/defs.h:
-
-../src/pokedex_heights.hpp:
 
 /usr/include/linux/close_range.h:
 
