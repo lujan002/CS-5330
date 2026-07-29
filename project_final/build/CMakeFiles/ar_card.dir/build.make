@@ -193,6 +193,7 @@ ar_card: /usr/lib/x86_64-linux-gnu/libopencv_xobjdetect.so.4.5.4d
 ar_card: /usr/lib/x86_64-linux-gnu/libopencv_xphoto.so.4.5.4d
 ar_card: /usr/lib/x86_64-linux-gnu/libGLEW.so
 ar_card: /usr/lib/x86_64-linux-gnu/libglfw.so.3.3
+ar_card: /usr/lib/x86_64-linux-gnu/libX11.so
 ar_card: /usr/lib/x86_64-linux-gnu/libassimp.so.5.2.0
 ar_card: /usr/lib/x86_64-linux-gnu/libcurl.so
 ar_card: /usr/lib/x86_64-linux-gnu/libopencv_highgui.so.4.5.4d

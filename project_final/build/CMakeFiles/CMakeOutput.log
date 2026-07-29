@@ -228,3 +228,87 @@ Parsed CXX implicit link information from above output:
   implicit fwks: []
 
 
+Determining if the function XOpenDisplay exists in the /usr/lib/x86_64-linux-gnu/libX11.so;/usr/lib/x86_64-linux-gnu/libXext.so passed with the following output:
+Change Dir: /media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/gmake -f Makefile cmTC_bab47/fast && /usr/bin/gmake  -f CMakeFiles/cmTC_bab47.dir/build.make CMakeFiles/cmTC_bab47.dir/build
+gmake[1]: Entering directory '/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/build/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_bab47.dir/CheckFunctionExists.cxx.o
+/usr/bin/c++   -DCHECK_FUNCTION_EXISTS=XOpenDisplay -std=gnu++17 -o CMakeFiles/cmTC_bab47.dir/CheckFunctionExists.cxx.o -c "/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/build/CMakeFiles/CheckLibraryExists/CheckFunctionExists.cxx"
+Linking CXX executable cmTC_bab47
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_bab47.dir/link.txt --verbose=1
+/usr/bin/c++  -DCHECK_FUNCTION_EXISTS=XOpenDisplay CMakeFiles/cmTC_bab47.dir/CheckFunctionExists.cxx.o -o cmTC_bab47  /usr/lib/x86_64-linux-gnu/libX11.so /usr/lib/x86_64-linux-gnu/libXext.so 
+gmake[1]: Leaving directory '/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/build/CMakeFiles/CMakeTmp'
+
+
+
+Determining if the function gethostbyname exists passed with the following output:
+Change Dir: /media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/gmake -f Makefile cmTC_f4236/fast && /usr/bin/gmake  -f CMakeFiles/cmTC_f4236.dir/build.make CMakeFiles/cmTC_f4236.dir/build
+gmake[1]: Entering directory '/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/build/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_f4236.dir/CheckFunctionExists.cxx.o
+/usr/bin/c++   -DCHECK_FUNCTION_EXISTS=gethostbyname -std=gnu++17 -o CMakeFiles/cmTC_f4236.dir/CheckFunctionExists.cxx.o -c "/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/build/CMakeFiles/CheckFunctionExists/CheckFunctionExists.cxx"
+Linking CXX executable cmTC_f4236
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_f4236.dir/link.txt --verbose=1
+/usr/bin/c++  -DCHECK_FUNCTION_EXISTS=gethostbyname CMakeFiles/cmTC_f4236.dir/CheckFunctionExists.cxx.o -o cmTC_f4236 
+gmake[1]: Leaving directory '/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/build/CMakeFiles/CMakeTmp'
+
+
+
+Determining if the function connect exists passed with the following output:
+Change Dir: /media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/gmake -f Makefile cmTC_8b2f8/fast && /usr/bin/gmake  -f CMakeFiles/cmTC_8b2f8.dir/build.make CMakeFiles/cmTC_8b2f8.dir/build
+gmake[1]: Entering directory '/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/build/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_8b2f8.dir/CheckFunctionExists.cxx.o
+/usr/bin/c++   -DCHECK_FUNCTION_EXISTS=connect -std=gnu++17 -o CMakeFiles/cmTC_8b2f8.dir/CheckFunctionExists.cxx.o -c "/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/build/CMakeFiles/CheckFunctionExists/CheckFunctionExists.cxx"
+Linking CXX executable cmTC_8b2f8
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_8b2f8.dir/link.txt --verbose=1
+/usr/bin/c++  -DCHECK_FUNCTION_EXISTS=connect CMakeFiles/cmTC_8b2f8.dir/CheckFunctionExists.cxx.o -o cmTC_8b2f8 
+gmake[1]: Leaving directory '/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/build/CMakeFiles/CMakeTmp'
+
+
+
+Determining if the function remove exists passed with the following output:
+Change Dir: /media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/gmake -f Makefile cmTC_ae715/fast && /usr/bin/gmake  -f CMakeFiles/cmTC_ae715.dir/build.make CMakeFiles/cmTC_ae715.dir/build
+gmake[1]: Entering directory '/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/build/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_ae715.dir/CheckFunctionExists.cxx.o
+/usr/bin/c++   -DCHECK_FUNCTION_EXISTS=remove -std=gnu++17 -o CMakeFiles/cmTC_ae715.dir/CheckFunctionExists.cxx.o -c "/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/build/CMakeFiles/CheckFunctionExists/CheckFunctionExists.cxx"
+Linking CXX executable cmTC_ae715
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_ae715.dir/link.txt --verbose=1
+/usr/bin/c++  -DCHECK_FUNCTION_EXISTS=remove CMakeFiles/cmTC_ae715.dir/CheckFunctionExists.cxx.o -o cmTC_ae715 
+gmake[1]: Leaving directory '/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/build/CMakeFiles/CMakeTmp'
+
+
+
+Determining if the function shmat exists passed with the following output:
+Change Dir: /media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/gmake -f Makefile cmTC_a311d/fast && /usr/bin/gmake  -f CMakeFiles/cmTC_a311d.dir/build.make CMakeFiles/cmTC_a311d.dir/build
+gmake[1]: Entering directory '/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/build/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_a311d.dir/CheckFunctionExists.cxx.o
+/usr/bin/c++   -DCHECK_FUNCTION_EXISTS=shmat -std=gnu++17 -o CMakeFiles/cmTC_a311d.dir/CheckFunctionExists.cxx.o -c "/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/build/CMakeFiles/CheckFunctionExists/CheckFunctionExists.cxx"
+Linking CXX executable cmTC_a311d
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_a311d.dir/link.txt --verbose=1
+/usr/bin/c++  -DCHECK_FUNCTION_EXISTS=shmat CMakeFiles/cmTC_a311d.dir/CheckFunctionExists.cxx.o -o cmTC_a311d 
+gmake[1]: Leaving directory '/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/build/CMakeFiles/CMakeTmp'
+
+
+
+Determining if the function IceConnectionNumber exists in the ICE passed with the following output:
+Change Dir: /media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/gmake -f Makefile cmTC_95bbe/fast && /usr/bin/gmake  -f CMakeFiles/cmTC_95bbe.dir/build.make CMakeFiles/cmTC_95bbe.dir/build
+gmake[1]: Entering directory '/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/build/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_95bbe.dir/CheckFunctionExists.cxx.o
+/usr/bin/c++   -DCHECK_FUNCTION_EXISTS=IceConnectionNumber -std=gnu++17 -o CMakeFiles/cmTC_95bbe.dir/CheckFunctionExists.cxx.o -c "/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/build/CMakeFiles/CheckLibraryExists/CheckFunctionExists.cxx"
+Linking CXX executable cmTC_95bbe
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_95bbe.dir/link.txt --verbose=1
+/usr/bin/c++  -DCHECK_FUNCTION_EXISTS=IceConnectionNumber CMakeFiles/cmTC_95bbe.dir/CheckFunctionExists.cxx.o -o cmTC_95bbe  -lICE 
+gmake[1]: Leaving directory '/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/build/CMakeFiles/CMakeTmp'
+
+
+

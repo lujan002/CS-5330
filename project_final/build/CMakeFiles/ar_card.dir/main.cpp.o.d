@@ -357,7 +357,10 @@ CMakeFiles/ar_card.dir/main.cpp.o: \
  /media/ubuntu-22/San\ Disk\ 2TB/Northeastern\ Courses/CS\ 5330/project_final/src/obj_loader.hpp \
  /media/ubuntu-22/San\ Disk\ 2TB/Northeastern\ Courses/CS\ 5330/project_final/src/model_download.hpp \
  /media/ubuntu-22/San\ Disk\ 2TB/Northeastern\ Courses/CS\ 5330/project_final/src/model_library.hpp \
- /usr/include/c++/11/fstream \
+ /usr/include/GLFW/glfw3.h /usr/include/GL/gl.h /usr/include/GL/glext.h \
+ /usr/include/KHR/khrplatform.h /usr/include/X11/Xlib.h \
+ /usr/include/X11/X.h /usr/include/X11/Xfuncproto.h \
+ /usr/include/X11/Xosdefs.h /usr/include/c++/11/fstream \
  /usr/include/x86_64-linux-gnu/c++/11/bits/basic_file.h \
  /usr/include/x86_64-linux-gnu/c++/11/bits/c++io.h \
  /usr/include/c++/11/bits/fstream.tcc
