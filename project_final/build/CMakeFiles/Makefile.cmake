@@ -10,8 +10,6 @@ set(CMAKE_MAKEFILE_DEPENDS
   "../CMakeLists.txt"
   "CMakeFiles/3.22.1/CMakeCXXCompiler.cmake"
   "CMakeFiles/3.22.1/CMakeSystem.cmake"
-  "CMakeFiles/CheckFunctionExists/CheckFunctionExists.cxx"
-  "CMakeFiles/CheckLibraryExists/CheckFunctionExists.cxx"
   "/usr/lib/x86_64-linux-gnu/cmake/assimp-5.2/assimpConfig.cmake"
   "/usr/lib/x86_64-linux-gnu/cmake/assimp-5.2/assimpConfigVersion.cmake"
   "/usr/lib/x86_64-linux-gnu/cmake/assimp-5.2/assimpTargets-none.cmake"
@@ -34,7 +32,6 @@ set(CMAKE_MAKEFILE_DEPENDS
   "/usr/share/cmake-3.22/Modules/CMakeLanguageInformation.cmake"
   "/usr/share/cmake-3.22/Modules/CMakeSystemSpecificInformation.cmake"
   "/usr/share/cmake-3.22/Modules/CMakeSystemSpecificInitialize.cmake"
-  "/usr/share/cmake-3.22/Modules/CheckFunctionExists.c"
   "/usr/share/cmake-3.22/Modules/CheckFunctionExists.cmake"
   "/usr/share/cmake-3.22/Modules/CheckLibraryExists.cmake"
   "/usr/share/cmake-3.22/Modules/Compiler/CMakeCommonCompilerMacros.cmake"
@@ -64,12 +61,6 @@ set(CMAKE_MAKEFILE_OUTPUTS
 
 # Byproducts of CMake generate step:
 set(CMAKE_MAKEFILE_PRODUCTS
-  "CMakeFiles/CheckLibraryExists/CheckFunctionExists.cxx"
-  "CMakeFiles/CheckFunctionExists/CheckFunctionExists.cxx"
-  "CMakeFiles/CheckFunctionExists/CheckFunctionExists.cxx"
-  "CMakeFiles/CheckFunctionExists/CheckFunctionExists.cxx"
-  "CMakeFiles/CheckFunctionExists/CheckFunctionExists.cxx"
-  "CMakeFiles/CheckLibraryExists/CheckFunctionExists.cxx"
   "CMakeFiles/CMakeDirectoryInformation.cmake"
   )
 
@@ -77,4 +68,5 @@ set(CMAKE_MAKEFILE_PRODUCTS
 set(CMAKE_DEPEND_INFO_FILES
   "CMakeFiles/ar_card.dir/DependInfo.cmake"
   "CMakeFiles/validate_models.dir/DependInfo.cmake"
+  "CMakeFiles/match_image.dir/DependInfo.cmake"
   )

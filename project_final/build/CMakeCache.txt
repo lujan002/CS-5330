@@ -241,6 +241,15 @@ GLEW_STATIC_LIBRARY_DEBUG:FILEPATH=GLEW_STATIC_LIBRARY_DEBUG-NOTFOUND
 GLEW_STATIC_LIBRARY_RELEASE:FILEPATH=/usr/lib/x86_64-linux-gnu/libGLEW.a
 
 //Path to a file.
+ONNXRUNTIME_INCLUDE_DIR:PATH=/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/onnxruntime-linux-x64-1.26.0/include
+
+//Path to a library.
+ONNXRUNTIME_LIBRARY:FILEPATH=/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/onnxruntime-linux-x64-1.26.0/lib/libonnxruntime.so
+
+//Root of a prebuilt ONNX Runtime release
+ONNXRUNTIME_ROOT:PATH=/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/../onnxruntime-linux-x64-1.26.0
+
+//Path to a file.
 OPENGL_EGL_INCLUDE_DIR:PATH=/usr/include
 
 //Path to a file.

@@ -142,6 +142,19 @@ validate_models/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/validate_models.dir/build.make CMakeFiles/validate_models.dir/build
 .PHONY : validate_models/fast
 
+#=============================================================================
+# Target rules for targets named match_image
+
+# Build rule for target.
+match_image: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 match_image
+.PHONY : match_image
+
+# fast build rule for target.
+match_image/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/match_image.dir/build.make CMakeFiles/match_image.dir/build
+.PHONY : match_image/fast
+
 main.o: main.cpp.o
 .PHONY : main.o
 
@@ -165,6 +178,33 @@ main.s: main.cpp.s
 main.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/main.cpp.s
 .PHONY : main.cpp.s
+
+src/card_matcher.o: src/card_matcher.cpp.o
+.PHONY : src/card_matcher.o
+
+# target to build an object file
+src/card_matcher.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/src/card_matcher.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/match_image.dir/build.make CMakeFiles/match_image.dir/src/card_matcher.cpp.o
+.PHONY : src/card_matcher.cpp.o
+
+src/card_matcher.i: src/card_matcher.cpp.i
+.PHONY : src/card_matcher.i
+
+# target to preprocess a source file
+src/card_matcher.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/src/card_matcher.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/match_image.dir/build.make CMakeFiles/match_image.dir/src/card_matcher.cpp.i
+.PHONY : src/card_matcher.cpp.i
+
+src/card_matcher.s: src/card_matcher.cpp.s
+.PHONY : src/card_matcher.s
+
+# target to generate assembly for a file
+src/card_matcher.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/src/card_matcher.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/match_image.dir/build.make CMakeFiles/match_image.dir/src/card_matcher.cpp.s
+.PHONY : src/card_matcher.cpp.s
 
 src/gl_renderer.o: src/gl_renderer.cpp.o
 .PHONY : src/gl_renderer.o
@@ -274,6 +314,30 @@ src/obj_loader.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/validate_models.dir/build.make CMakeFiles/validate_models.dir/src/obj_loader.cpp.s
 .PHONY : src/obj_loader.cpp.s
 
+tools/match_image.o: tools/match_image.cpp.o
+.PHONY : tools/match_image.o
+
+# target to build an object file
+tools/match_image.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/match_image.dir/build.make CMakeFiles/match_image.dir/tools/match_image.cpp.o
+.PHONY : tools/match_image.cpp.o
+
+tools/match_image.i: tools/match_image.cpp.i
+.PHONY : tools/match_image.i
+
+# target to preprocess a source file
+tools/match_image.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/match_image.dir/build.make CMakeFiles/match_image.dir/tools/match_image.cpp.i
+.PHONY : tools/match_image.cpp.i
+
+tools/match_image.s: tools/match_image.cpp.s
+.PHONY : tools/match_image.s
+
+# target to generate assembly for a file
+tools/match_image.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/match_image.dir/build.make CMakeFiles/match_image.dir/tools/match_image.cpp.s
+.PHONY : tools/match_image.cpp.s
+
 tools/validate_models.o: tools/validate_models.cpp.o
 .PHONY : tools/validate_models.o
 
@@ -307,10 +371,14 @@ help:
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
 	@echo "... ar_card"
+	@echo "... match_image"
 	@echo "... validate_models"
 	@echo "... main.o"
 	@echo "... main.i"
 	@echo "... main.s"
+	@echo "... src/card_matcher.o"
+	@echo "... src/card_matcher.i"
+	@echo "... src/card_matcher.s"
 	@echo "... src/gl_renderer.o"
 	@echo "... src/gl_renderer.i"
 	@echo "... src/gl_renderer.s"
@@ -323,6 +391,9 @@ help:
 	@echo "... src/obj_loader.o"
 	@echo "... src/obj_loader.i"
 	@echo "... src/obj_loader.s"
+	@echo "... tools/match_image.o"
+	@echo "... tools/match_image.i"
+	@echo "... tools/match_image.s"
 	@echo "... tools/validate_models.o"
 	@echo "... tools/validate_models.i"
 	@echo "... tools/validate_models.s"
