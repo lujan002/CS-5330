@@ -1,6 +1,8 @@
 file(REMOVE_RECURSE
   "CMakeFiles/match_image.dir/src/card_matcher.cpp.o"
   "CMakeFiles/match_image.dir/src/card_matcher.cpp.o.d"
+  "CMakeFiles/match_image.dir/src/card_net_input.cpp.o"
+  "CMakeFiles/match_image.dir/src/card_net_input.cpp.o.d"
   "CMakeFiles/match_image.dir/tools/match_image.cpp.o"
   "CMakeFiles/match_image.dir/tools/match_image.cpp.o.d"
   "match_image"

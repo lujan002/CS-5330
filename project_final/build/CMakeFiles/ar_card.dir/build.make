@@ -167,6 +167,34 @@ CMakeFiles/ar_card.dir/src/card_matcher.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/ar_card.dir/src/card_matcher.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S "/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/src/card_matcher.cpp" -o CMakeFiles/ar_card.dir/src/card_matcher.cpp.s
 
+CMakeFiles/ar_card.dir/src/card_net_input.cpp.o: CMakeFiles/ar_card.dir/flags.make
+CMakeFiles/ar_card.dir/src/card_net_input.cpp.o: ../src/card_net_input.cpp
+CMakeFiles/ar_card.dir/src/card_net_input.cpp.o: CMakeFiles/ar_card.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir="/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/build/CMakeFiles" --progress-num=$(CMAKE_PROGRESS_8) "Building CXX object CMakeFiles/ar_card.dir/src/card_net_input.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/ar_card.dir/src/card_net_input.cpp.o -MF CMakeFiles/ar_card.dir/src/card_net_input.cpp.o.d -o CMakeFiles/ar_card.dir/src/card_net_input.cpp.o -c "/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/src/card_net_input.cpp"
+
+CMakeFiles/ar_card.dir/src/card_net_input.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/ar_card.dir/src/card_net_input.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E "/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/src/card_net_input.cpp" > CMakeFiles/ar_card.dir/src/card_net_input.cpp.i
+
+CMakeFiles/ar_card.dir/src/card_net_input.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/ar_card.dir/src/card_net_input.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S "/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/src/card_net_input.cpp" -o CMakeFiles/ar_card.dir/src/card_net_input.cpp.s
+
+CMakeFiles/ar_card.dir/src/orientation_classifier.cpp.o: CMakeFiles/ar_card.dir/flags.make
+CMakeFiles/ar_card.dir/src/orientation_classifier.cpp.o: ../src/orientation_classifier.cpp
+CMakeFiles/ar_card.dir/src/orientation_classifier.cpp.o: CMakeFiles/ar_card.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir="/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/build/CMakeFiles" --progress-num=$(CMAKE_PROGRESS_9) "Building CXX object CMakeFiles/ar_card.dir/src/orientation_classifier.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/ar_card.dir/src/orientation_classifier.cpp.o -MF CMakeFiles/ar_card.dir/src/orientation_classifier.cpp.o.d -o CMakeFiles/ar_card.dir/src/orientation_classifier.cpp.o -c "/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/src/orientation_classifier.cpp"
+
+CMakeFiles/ar_card.dir/src/orientation_classifier.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/ar_card.dir/src/orientation_classifier.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E "/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/src/orientation_classifier.cpp" > CMakeFiles/ar_card.dir/src/orientation_classifier.cpp.i
+
+CMakeFiles/ar_card.dir/src/orientation_classifier.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/ar_card.dir/src/orientation_classifier.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S "/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/src/orientation_classifier.cpp" -o CMakeFiles/ar_card.dir/src/orientation_classifier.cpp.s
+
 # Object files for target ar_card
 ar_card_OBJECTS = \
 "CMakeFiles/ar_card.dir/main.cpp.o" \
@@ -175,7 +203,9 @@ ar_card_OBJECTS = \
 "CMakeFiles/ar_card.dir/src/model_library.cpp.o" \
 "CMakeFiles/ar_card.dir/src/model_download.cpp.o" \
 "CMakeFiles/ar_card.dir/src/poke3d_download.cpp.o" \
-"CMakeFiles/ar_card.dir/src/card_matcher.cpp.o"
+"CMakeFiles/ar_card.dir/src/card_matcher.cpp.o" \
+"CMakeFiles/ar_card.dir/src/card_net_input.cpp.o" \
+"CMakeFiles/ar_card.dir/src/orientation_classifier.cpp.o"
 
 # External object files for target ar_card
 ar_card_EXTERNAL_OBJECTS =
@@ -187,6 +217,8 @@ ar_card: CMakeFiles/ar_card.dir/src/model_library.cpp.o
 ar_card: CMakeFiles/ar_card.dir/src/model_download.cpp.o
 ar_card: CMakeFiles/ar_card.dir/src/poke3d_download.cpp.o
 ar_card: CMakeFiles/ar_card.dir/src/card_matcher.cpp.o
+ar_card: CMakeFiles/ar_card.dir/src/card_net_input.cpp.o
+ar_card: CMakeFiles/ar_card.dir/src/orientation_classifier.cpp.o
 ar_card: CMakeFiles/ar_card.dir/build.make
 ar_card: /usr/lib/x86_64-linux-gnu/libopencv_stitching.so.4.5.4d
 ar_card: /usr/lib/x86_64-linux-gnu/libopencv_alphamat.so.4.5.4d
@@ -254,7 +286,7 @@ ar_card: /usr/lib/x86_64-linux-gnu/libz.so
 ar_card: /usr/lib/x86_64-linux-gnu/libdraco.so.4.0.0
 ar_card: /usr/lib/x86_64-linux-gnu/librt.a
 ar_card: CMakeFiles/ar_card.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir="/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/build/CMakeFiles" --progress-num=$(CMAKE_PROGRESS_8) "Linking CXX executable ar_card"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir="/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/build/CMakeFiles" --progress-num=$(CMAKE_PROGRESS_10) "Linking CXX executable ar_card"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/ar_card.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.

@@ -206,6 +206,33 @@ src/card_matcher.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/match_image.dir/build.make CMakeFiles/match_image.dir/src/card_matcher.cpp.s
 .PHONY : src/card_matcher.cpp.s
 
+src/card_net_input.o: src/card_net_input.cpp.o
+.PHONY : src/card_net_input.o
+
+# target to build an object file
+src/card_net_input.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/src/card_net_input.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/match_image.dir/build.make CMakeFiles/match_image.dir/src/card_net_input.cpp.o
+.PHONY : src/card_net_input.cpp.o
+
+src/card_net_input.i: src/card_net_input.cpp.i
+.PHONY : src/card_net_input.i
+
+# target to preprocess a source file
+src/card_net_input.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/src/card_net_input.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/match_image.dir/build.make CMakeFiles/match_image.dir/src/card_net_input.cpp.i
+.PHONY : src/card_net_input.cpp.i
+
+src/card_net_input.s: src/card_net_input.cpp.s
+.PHONY : src/card_net_input.s
+
+# target to generate assembly for a file
+src/card_net_input.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/src/card_net_input.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/match_image.dir/build.make CMakeFiles/match_image.dir/src/card_net_input.cpp.s
+.PHONY : src/card_net_input.cpp.s
+
 src/gl_renderer.o: src/gl_renderer.cpp.o
 .PHONY : src/gl_renderer.o
 
@@ -314,6 +341,30 @@ src/obj_loader.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/validate_models.dir/build.make CMakeFiles/validate_models.dir/src/obj_loader.cpp.s
 .PHONY : src/obj_loader.cpp.s
 
+src/orientation_classifier.o: src/orientation_classifier.cpp.o
+.PHONY : src/orientation_classifier.o
+
+# target to build an object file
+src/orientation_classifier.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/src/orientation_classifier.cpp.o
+.PHONY : src/orientation_classifier.cpp.o
+
+src/orientation_classifier.i: src/orientation_classifier.cpp.i
+.PHONY : src/orientation_classifier.i
+
+# target to preprocess a source file
+src/orientation_classifier.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/src/orientation_classifier.cpp.i
+.PHONY : src/orientation_classifier.cpp.i
+
+src/orientation_classifier.s: src/orientation_classifier.cpp.s
+.PHONY : src/orientation_classifier.s
+
+# target to generate assembly for a file
+src/orientation_classifier.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/src/orientation_classifier.cpp.s
+.PHONY : src/orientation_classifier.cpp.s
+
 src/poke3d_download.o: src/poke3d_download.cpp.o
 .PHONY : src/poke3d_download.o
 
@@ -406,6 +457,9 @@ help:
 	@echo "... src/card_matcher.o"
 	@echo "... src/card_matcher.i"
 	@echo "... src/card_matcher.s"
+	@echo "... src/card_net_input.o"
+	@echo "... src/card_net_input.i"
+	@echo "... src/card_net_input.s"
 	@echo "... src/gl_renderer.o"
 	@echo "... src/gl_renderer.i"
 	@echo "... src/gl_renderer.s"
@@ -418,6 +472,9 @@ help:
 	@echo "... src/obj_loader.o"
 	@echo "... src/obj_loader.i"
 	@echo "... src/obj_loader.s"
+	@echo "... src/orientation_classifier.o"
+	@echo "... src/orientation_classifier.i"
+	@echo "... src/orientation_classifier.s"
 	@echo "... src/poke3d_download.o"
 	@echo "... src/poke3d_download.i"
 	@echo "... src/poke3d_download.s"
