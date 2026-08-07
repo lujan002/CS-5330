@@ -1,6 +1,8 @@
-CMakeFiles/validate_models.dir/src/obj_loader.cpp.o: \
- /media/ubuntu-22/San\ Disk\ 2TB/Northeastern\ Courses/CS\ 5330/project_final/src/obj_loader.cpp \
+CMakeFiles/ar_card.dir/src/poke3d_download.cpp.o: \
+ /media/ubuntu-22/San\ Disk\ 2TB/Northeastern\ Courses/CS\ 5330/project_final/src/poke3d_download.cpp \
  /usr/include/stdc-predef.h \
+ /media/ubuntu-22/San\ Disk\ 2TB/Northeastern\ Courses/CS\ 5330/project_final/src/poke3d_download.hpp \
+ /media/ubuntu-22/San\ Disk\ 2TB/Northeastern\ Courses/CS\ 5330/project_final/src/model_library.hpp \
  /media/ubuntu-22/San\ Disk\ 2TB/Northeastern\ Courses/CS\ 5330/project_final/src/obj_loader.hpp \
  /usr/include/opencv4/opencv2/core.hpp \
  /usr/include/opencv4/opencv2/core/cvdef.h \
@@ -262,38 +264,51 @@ CMakeFiles/validate_models.dir/src/obj_loader.cpp.o: \
  /usr/include/opencv4/opencv2/core/ovx.hpp \
  /usr/include/opencv4/opencv2/core/cvdef.h /usr/include/c++/11/map \
  /usr/include/c++/11/bits/stl_tree.h /usr/include/c++/11/bits/stl_map.h \
- /usr/include/c++/11/bits/stl_multimap.h /usr/include/assimp/Importer.hpp \
- /usr/include/assimp/types.h /usr/include/assimp/defs.h \
- /usr/include/assimp/config.h /usr/include/assimp/vector2.h \
- /usr/include/assimp/vector3.h /usr/include/assimp/color4.h \
- /usr/include/assimp/matrix3x3.h /usr/include/assimp/matrix4x4.h \
- /usr/include/assimp/quaternion.h /usr/include/assimp/vector2.inl \
- /usr/include/assimp/vector3.inl /usr/include/assimp/color4.inl \
- /usr/include/assimp/matrix3x3.inl /usr/include/assimp/matrix4x4.inl \
- /usr/include/assimp/MathFunctions.h /usr/include/assimp/quaternion.inl \
- /usr/include/assimp/postprocess.h /usr/include/assimp/scene.h \
- /usr/include/assimp/texture.h /usr/include/assimp/Compiler/pushpack1.h \
- /usr/include/assimp/Compiler/poppack1.h /usr/include/assimp/mesh.h \
- /usr/include/assimp/aabb.h /usr/include/assimp/light.h \
- /usr/include/assimp/camera.h /usr/include/assimp/material.h \
- /usr/include/assimp/material.inl /usr/include/assimp/anim.h \
- /usr/include/assimp/metadata.h \
- /usr/include/opencv4/opencv2/imgcodecs.hpp \
- /usr/include/opencv4/opencv2/imgproc.hpp \
- /usr/include/opencv4/opencv2/imgproc/segmentation.hpp \
- /usr/include/c++/11/filesystem /usr/include/c++/11/bits/fs_fwd.h \
- /usr/include/c++/11/bits/fs_path.h /usr/include/c++/11/locale \
+ /usr/include/c++/11/bits/stl_multimap.h \
+ /usr/include/x86_64-linux-gnu/curl/curl.h \
+ /usr/include/x86_64-linux-gnu/curl/curlver.h \
+ /usr/include/x86_64-linux-gnu/curl/system.h \
+ /usr/include/x86_64-linux-gnu/sys/socket.h \
+ /usr/include/x86_64-linux-gnu/bits/types/struct_iovec.h \
+ /usr/include/x86_64-linux-gnu/bits/socket.h \
+ /usr/include/x86_64-linux-gnu/bits/socket_type.h \
+ /usr/include/x86_64-linux-gnu/bits/sockaddr.h \
+ /usr/include/x86_64-linux-gnu/asm/socket.h \
+ /usr/include/asm-generic/socket.h /usr/include/linux/posix_types.h \
+ /usr/include/linux/stddef.h \
+ /usr/include/x86_64-linux-gnu/asm/posix_types.h \
+ /usr/include/x86_64-linux-gnu/asm/posix_types_64.h \
+ /usr/include/asm-generic/posix_types.h \
+ /usr/include/x86_64-linux-gnu/asm/bitsperlong.h \
+ /usr/include/asm-generic/bitsperlong.h \
+ /usr/include/x86_64-linux-gnu/asm/sockios.h \
+ /usr/include/asm-generic/sockios.h \
+ /usr/include/x86_64-linux-gnu/bits/types/struct_osockaddr.h \
+ /usr/include/x86_64-linux-gnu/bits/socket2.h \
+ /usr/include/x86_64-linux-gnu/sys/time.h \
+ /usr/include/x86_64-linux-gnu/curl/easy.h \
+ /usr/include/x86_64-linux-gnu/curl/multi.h \
+ /usr/include/x86_64-linux-gnu/curl/curl.h \
+ /usr/include/x86_64-linux-gnu/curl/urlapi.h \
+ /usr/include/x86_64-linux-gnu/curl/options.h /usr/include/c++/11/fstream \
+ /usr/include/c++/11/bits/codecvt.h \
+ /usr/include/x86_64-linux-gnu/c++/11/bits/basic_file.h \
+ /usr/include/x86_64-linux-gnu/c++/11/bits/c++io.h \
+ /usr/include/c++/11/bits/fstream.tcc /usr/include/c++/11/filesystem \
+ /usr/include/c++/11/bits/fs_fwd.h /usr/include/c++/11/bits/fs_path.h \
+ /usr/include/c++/11/locale \
  /usr/include/c++/11/bits/locale_facets_nonio.h \
  /usr/include/x86_64-linux-gnu/c++/11/bits/time_members.h \
  /usr/include/x86_64-linux-gnu/c++/11/bits/messages_members.h \
- /usr/include/libintl.h /usr/include/c++/11/bits/codecvt.h \
- /usr/include/c++/11/bits/locale_facets_nonio.tcc \
+ /usr/include/libintl.h /usr/include/c++/11/bits/locale_facets_nonio.tcc \
  /usr/include/c++/11/bits/locale_conv.h /usr/include/c++/11/iomanip \
  /usr/include/c++/11/bits/quoted_string.h /usr/include/c++/11/codecvt \
  /usr/include/c++/11/bits/fs_dir.h /usr/include/c++/11/bits/fs_ops.h \
- /usr/include/c++/11/fstream \
- /usr/include/x86_64-linux-gnu/c++/11/bits/basic_file.h \
- /usr/include/x86_64-linux-gnu/c++/11/bits/c++io.h \
- /usr/include/c++/11/bits/fstream.tcc /usr/include/c++/11/iostream \
- /usr/include/c++/11/unordered_set \
- /usr/include/c++/11/bits/unordered_set.h
+ /usr/include/unistd.h /usr/include/x86_64-linux-gnu/bits/posix_opt.h \
+ /usr/include/x86_64-linux-gnu/bits/environments.h \
+ /usr/include/x86_64-linux-gnu/bits/confname.h \
+ /usr/include/x86_64-linux-gnu/bits/getopt_posix.h \
+ /usr/include/x86_64-linux-gnu/bits/getopt_core.h \
+ /usr/include/x86_64-linux-gnu/bits/unistd.h \
+ /usr/include/x86_64-linux-gnu/bits/unistd_ext.h \
+ /usr/include/linux/close_range.h

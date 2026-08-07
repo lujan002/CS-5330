@@ -279,6 +279,8 @@ CMakeFiles/ar_card.dir/src/obj_loader.cpp.o: \
  /usr/include/assimp/material.inl /usr/include/assimp/anim.h \
  /usr/include/assimp/metadata.h \
  /usr/include/opencv4/opencv2/imgcodecs.hpp \
+ /usr/include/opencv4/opencv2/imgproc.hpp \
+ /usr/include/opencv4/opencv2/imgproc/segmentation.hpp \
  /usr/include/c++/11/filesystem /usr/include/c++/11/bits/fs_fwd.h \
  /usr/include/c++/11/bits/fs_path.h /usr/include/c++/11/locale \
  /usr/include/c++/11/bits/locale_facets_nonio.h \

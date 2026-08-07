@@ -314,6 +314,33 @@ src/obj_loader.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/validate_models.dir/build.make CMakeFiles/validate_models.dir/src/obj_loader.cpp.s
 .PHONY : src/obj_loader.cpp.s
 
+src/poke3d_download.o: src/poke3d_download.cpp.o
+.PHONY : src/poke3d_download.o
+
+# target to build an object file
+src/poke3d_download.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/src/poke3d_download.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/validate_models.dir/build.make CMakeFiles/validate_models.dir/src/poke3d_download.cpp.o
+.PHONY : src/poke3d_download.cpp.o
+
+src/poke3d_download.i: src/poke3d_download.cpp.i
+.PHONY : src/poke3d_download.i
+
+# target to preprocess a source file
+src/poke3d_download.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/src/poke3d_download.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/validate_models.dir/build.make CMakeFiles/validate_models.dir/src/poke3d_download.cpp.i
+.PHONY : src/poke3d_download.cpp.i
+
+src/poke3d_download.s: src/poke3d_download.cpp.s
+.PHONY : src/poke3d_download.s
+
+# target to generate assembly for a file
+src/poke3d_download.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/src/poke3d_download.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/validate_models.dir/build.make CMakeFiles/validate_models.dir/src/poke3d_download.cpp.s
+.PHONY : src/poke3d_download.cpp.s
+
 tools/match_image.o: tools/match_image.cpp.o
 .PHONY : tools/match_image.o
 
@@ -391,6 +418,9 @@ help:
 	@echo "... src/obj_loader.o"
 	@echo "... src/obj_loader.i"
 	@echo "... src/obj_loader.s"
+	@echo "... src/poke3d_download.o"
+	@echo "... src/poke3d_download.i"
+	@echo "... src/poke3d_download.s"
 	@echo "... tools/match_image.o"
 	@echo "... tools/match_image.i"
 	@echo "... tools/match_image.s"

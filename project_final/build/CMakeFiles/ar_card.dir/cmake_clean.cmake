@@ -11,6 +11,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/ar_card.dir/src/model_library.cpp.o.d"
   "CMakeFiles/ar_card.dir/src/obj_loader.cpp.o"
   "CMakeFiles/ar_card.dir/src/obj_loader.cpp.o.d"
+  "CMakeFiles/ar_card.dir/src/poke3d_download.cpp.o"
+  "CMakeFiles/ar_card.dir/src/poke3d_download.cpp.o.d"
   "ar_card"
   "ar_card.pdb"
 )
