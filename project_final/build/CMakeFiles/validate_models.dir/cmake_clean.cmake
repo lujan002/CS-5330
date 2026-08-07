@@ -9,6 +9,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/validate_models.dir/src/obj_loader.cpp.o.d"
   "CMakeFiles/validate_models.dir/src/poke3d_download.cpp.o"
   "CMakeFiles/validate_models.dir/src/poke3d_download.cpp.o.d"
+  "CMakeFiles/validate_models.dir/src/pokemon_heights.cpp.o"
+  "CMakeFiles/validate_models.dir/src/pokemon_heights.cpp.o.d"
   "CMakeFiles/validate_models.dir/tools/validate_models.cpp.o"
   "CMakeFiles/validate_models.dir/tools/validate_models.cpp.o.d"
   "validate_models"

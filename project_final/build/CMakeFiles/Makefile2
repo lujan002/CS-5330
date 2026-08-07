@@ -85,12 +85,12 @@ clean: CMakeFiles/match_image.dir/clean
 CMakeFiles/ar_card.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir="/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/build/CMakeFiles" --progress-num=1,2,3,4,5,6,7,8,9,10 "Built target ar_card"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir="/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/build/CMakeFiles" --progress-num=1,2,3,4,5,6,7,8,9,10,11 "Built target ar_card"
 .PHONY : CMakeFiles/ar_card.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/ar_card.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start "/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/build/CMakeFiles" 10
+	$(CMAKE_COMMAND) -E cmake_progress_start "/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/build/CMakeFiles" 11
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/ar_card.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start "/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/build/CMakeFiles" 0
 .PHONY : CMakeFiles/ar_card.dir/rule
@@ -111,12 +111,12 @@ CMakeFiles/ar_card.dir/clean:
 CMakeFiles/validate_models.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/validate_models.dir/build.make CMakeFiles/validate_models.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/validate_models.dir/build.make CMakeFiles/validate_models.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir="/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/build/CMakeFiles" --progress-num=15,16,17,18,19,20,21 "Built target validate_models"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir="/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/build/CMakeFiles" --progress-num=16,17,18,19,20,21,22,23 "Built target validate_models"
 .PHONY : CMakeFiles/validate_models.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/validate_models.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start "/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/build/CMakeFiles" 7
+	$(CMAKE_COMMAND) -E cmake_progress_start "/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/build/CMakeFiles" 8
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/validate_models.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start "/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/build/CMakeFiles" 0
 .PHONY : CMakeFiles/validate_models.dir/rule
@@ -137,7 +137,7 @@ CMakeFiles/validate_models.dir/clean:
 CMakeFiles/match_image.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/match_image.dir/build.make CMakeFiles/match_image.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/match_image.dir/build.make CMakeFiles/match_image.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir="/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/build/CMakeFiles" --progress-num=11,12,13,14 "Built target match_image"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir="/media/ubuntu-22/San Disk 2TB/Northeastern Courses/CS 5330/project_final/build/CMakeFiles" --progress-num=12,13,14,15 "Built target match_image"
 .PHONY : CMakeFiles/match_image.dir/all
 
 # Build rule for subdir invocation for target.

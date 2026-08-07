@@ -17,6 +17,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/ar_card.dir/src/orientation_classifier.cpp.o.d"
   "CMakeFiles/ar_card.dir/src/poke3d_download.cpp.o"
   "CMakeFiles/ar_card.dir/src/poke3d_download.cpp.o.d"
+  "CMakeFiles/ar_card.dir/src/pokemon_heights.cpp.o"
+  "CMakeFiles/ar_card.dir/src/pokemon_heights.cpp.o.d"
   "ar_card"
   "ar_card.pdb"
 )

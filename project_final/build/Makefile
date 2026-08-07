@@ -392,6 +392,33 @@ src/poke3d_download.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/validate_models.dir/build.make CMakeFiles/validate_models.dir/src/poke3d_download.cpp.s
 .PHONY : src/poke3d_download.cpp.s
 
+src/pokemon_heights.o: src/pokemon_heights.cpp.o
+.PHONY : src/pokemon_heights.o
+
+# target to build an object file
+src/pokemon_heights.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/src/pokemon_heights.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/validate_models.dir/build.make CMakeFiles/validate_models.dir/src/pokemon_heights.cpp.o
+.PHONY : src/pokemon_heights.cpp.o
+
+src/pokemon_heights.i: src/pokemon_heights.cpp.i
+.PHONY : src/pokemon_heights.i
+
+# target to preprocess a source file
+src/pokemon_heights.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/src/pokemon_heights.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/validate_models.dir/build.make CMakeFiles/validate_models.dir/src/pokemon_heights.cpp.i
+.PHONY : src/pokemon_heights.cpp.i
+
+src/pokemon_heights.s: src/pokemon_heights.cpp.s
+.PHONY : src/pokemon_heights.s
+
+# target to generate assembly for a file
+src/pokemon_heights.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/src/pokemon_heights.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/validate_models.dir/build.make CMakeFiles/validate_models.dir/src/pokemon_heights.cpp.s
+.PHONY : src/pokemon_heights.cpp.s
+
 tools/match_image.o: tools/match_image.cpp.o
 .PHONY : tools/match_image.o
 
@@ -478,6 +505,9 @@ help:
 	@echo "... src/poke3d_download.o"
 	@echo "... src/poke3d_download.i"
 	@echo "... src/poke3d_download.s"
+	@echo "... src/pokemon_heights.o"
+	@echo "... src/pokemon_heights.i"
+	@echo "... src/pokemon_heights.s"
 	@echo "... tools/match_image.o"
 	@echo "... tools/match_image.i"
 	@echo "... tools/match_image.s"
