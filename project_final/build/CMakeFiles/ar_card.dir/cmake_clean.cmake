@@ -5,6 +5,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/ar_card.dir/src/card_matcher.cpp.o.d"
   "CMakeFiles/ar_card.dir/src/card_net_input.cpp.o"
   "CMakeFiles/ar_card.dir/src/card_net_input.cpp.o.d"
+  "CMakeFiles/ar_card.dir/src/cardness_classifier.cpp.o"
+  "CMakeFiles/ar_card.dir/src/cardness_classifier.cpp.o.d"
   "CMakeFiles/ar_card.dir/src/gl_renderer.cpp.o"
   "CMakeFiles/ar_card.dir/src/gl_renderer.cpp.o.d"
   "CMakeFiles/ar_card.dir/src/model_download.cpp.o"

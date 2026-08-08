@@ -233,6 +233,30 @@ src/card_net_input.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/match_image.dir/build.make CMakeFiles/match_image.dir/src/card_net_input.cpp.s
 .PHONY : src/card_net_input.cpp.s
 
+src/cardness_classifier.o: src/cardness_classifier.cpp.o
+.PHONY : src/cardness_classifier.o
+
+# target to build an object file
+src/cardness_classifier.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/src/cardness_classifier.cpp.o
+.PHONY : src/cardness_classifier.cpp.o
+
+src/cardness_classifier.i: src/cardness_classifier.cpp.i
+.PHONY : src/cardness_classifier.i
+
+# target to preprocess a source file
+src/cardness_classifier.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/src/cardness_classifier.cpp.i
+.PHONY : src/cardness_classifier.cpp.i
+
+src/cardness_classifier.s: src/cardness_classifier.cpp.s
+.PHONY : src/cardness_classifier.s
+
+# target to generate assembly for a file
+src/cardness_classifier.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ar_card.dir/build.make CMakeFiles/ar_card.dir/src/cardness_classifier.cpp.s
+.PHONY : src/cardness_classifier.cpp.s
+
 src/gl_renderer.o: src/gl_renderer.cpp.o
 .PHONY : src/gl_renderer.o
 
@@ -487,6 +511,9 @@ help:
 	@echo "... src/card_net_input.o"
 	@echo "... src/card_net_input.i"
 	@echo "... src/card_net_input.s"
+	@echo "... src/cardness_classifier.o"
+	@echo "... src/cardness_classifier.i"
+	@echo "... src/cardness_classifier.s"
 	@echo "... src/gl_renderer.o"
 	@echo "... src/gl_renderer.i"
 	@echo "... src/gl_renderer.s"
