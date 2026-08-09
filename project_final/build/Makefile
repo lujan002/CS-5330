@@ -143,6 +143,19 @@ validate_models/fast:
 .PHONY : validate_models/fast
 
 #=============================================================================
+# Target rules for targets named calibrate_camera
+
+# Build rule for target.
+calibrate_camera: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 calibrate_camera
+.PHONY : calibrate_camera
+
+# fast build rule for target.
+calibrate_camera/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/calibrate_camera.dir/build.make CMakeFiles/calibrate_camera.dir/build
+.PHONY : calibrate_camera/fast
+
+#=============================================================================
 # Target rules for targets named match_image
 
 # Build rule for target.
@@ -443,6 +456,30 @@ src/pokemon_heights.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/validate_models.dir/build.make CMakeFiles/validate_models.dir/src/pokemon_heights.cpp.s
 .PHONY : src/pokemon_heights.cpp.s
 
+tools/calibrate_camera.o: tools/calibrate_camera.cpp.o
+.PHONY : tools/calibrate_camera.o
+
+# target to build an object file
+tools/calibrate_camera.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/calibrate_camera.dir/build.make CMakeFiles/calibrate_camera.dir/tools/calibrate_camera.cpp.o
+.PHONY : tools/calibrate_camera.cpp.o
+
+tools/calibrate_camera.i: tools/calibrate_camera.cpp.i
+.PHONY : tools/calibrate_camera.i
+
+# target to preprocess a source file
+tools/calibrate_camera.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/calibrate_camera.dir/build.make CMakeFiles/calibrate_camera.dir/tools/calibrate_camera.cpp.i
+.PHONY : tools/calibrate_camera.cpp.i
+
+tools/calibrate_camera.s: tools/calibrate_camera.cpp.s
+.PHONY : tools/calibrate_camera.s
+
+# target to generate assembly for a file
+tools/calibrate_camera.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/calibrate_camera.dir/build.make CMakeFiles/calibrate_camera.dir/tools/calibrate_camera.cpp.s
+.PHONY : tools/calibrate_camera.cpp.s
+
 tools/match_image.o: tools/match_image.cpp.o
 .PHONY : tools/match_image.o
 
@@ -500,6 +537,7 @@ help:
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
 	@echo "... ar_card"
+	@echo "... calibrate_camera"
 	@echo "... match_image"
 	@echo "... validate_models"
 	@echo "... main.o"
@@ -535,6 +573,9 @@ help:
 	@echo "... src/pokemon_heights.o"
 	@echo "... src/pokemon_heights.i"
 	@echo "... src/pokemon_heights.s"
+	@echo "... tools/calibrate_camera.o"
+	@echo "... tools/calibrate_camera.i"
+	@echo "... tools/calibrate_camera.s"
 	@echo "... tools/match_image.o"
 	@echo "... tools/match_image.i"
 	@echo "... tools/match_image.s"

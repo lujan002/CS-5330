@@ -125,6 +125,22 @@ std::string stripDexNumber(const std::string& display) {
     return space == std::string::npos ? display : display.substr(space + 1);
 }
 
+// "#0003 Venusaur" / "#6 Charizard" -> national dex, or -1 if unparseable.
+int parseDexNumber(const std::string& display) {
+    if (display.empty() || display[0] != '#') {
+        return -1;
+    }
+    std::size_t end = 1;
+    while (end < display.size() &&
+           std::isdigit(static_cast<unsigned char>(display[end]))) {
+        end++;
+    }
+    if (end == 1) {
+        return -1;
+    }
+    return std::stoi(display.substr(1, end - 1));
+}
+
 std::string attributeAfter(const std::string& html, std::size_t from, const std::string& attr) {
     const std::size_t at = html.find(attr, from);
     if (at == std::string::npos) {
@@ -303,6 +319,47 @@ std::vector<std::string> ModelDownloader::suggest(
     return hits;
 }
 
+bool ModelDownloader::downloadByDex(
+    int dex,
+    std::vector<ModelEntry>& out_models,
+    std::string& error) {
+    out_models.clear();
+    if (dex <= 0) {
+        error = "national dex must be a positive integer";
+        return false;
+    }
+    if (!fetchIndex(error)) {
+        return false;
+    }
+
+    // Several tiles can share a dex (base form, Mega, costume). Prefer the
+    // shortest non-Mega name so "#0006 Charizard" wins over Mega Charizard X.
+    const IndexEntry* best = nullptr;
+    for (const IndexEntry& entry : entries_) {
+        if (parseDexNumber(entry.display) != dex) {
+            continue;
+        }
+        const std::string key = normalizeName(entry.clean);
+        const bool mega = key.find("mega") != std::string::npos;
+        if (best == nullptr) {
+            best = &entry;
+            continue;
+        }
+        const std::string best_key = normalizeName(best->clean);
+        const bool best_mega = best_key.find("mega") != std::string::npos;
+        if (best_mega && !mega) {
+            best = &entry;
+        } else if (best_mega == mega && key.size() < best_key.size()) {
+            best = &entry;
+        }
+    }
+    if (best == nullptr) {
+        error = "no Pokemon X/Y model for national dex #" + std::to_string(dex);
+        return false;
+    }
+    return download(best->clean, out_models, error);
+}
+
 bool ModelDownloader::download(
     const std::string& pokemon_name,
     std::vector<ModelEntry>& out_models,
@@ -398,6 +455,7 @@ bool ModelDownloader::download(
 
     // Some archives name their file after the internal asset id ("pm0081_00"), so
     // fall back to the Pokedex name for anything that does not mention it.
+    const int dex = parseDexNumber(match->display);
     const std::string clean_key = normalizeName(match->clean);
     for (std::size_t i = 0; i < out_models.size(); i++) {
         const std::string entry_key = normalizeName(out_models[i].name);
@@ -407,6 +465,11 @@ bool ModelDownloader::download(
             out_models[i].name = out_models.size() > 1
                                      ? match->clean + "_" + std::to_string(i + 1)
                                      : match->clean;
+        }
+        if (dex > 0) {
+            out_models[i].dex = dex;
+        } else {
+            resolveModelDex(out_models[i]);
         }
     }
     return true;

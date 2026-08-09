@@ -4,10 +4,13 @@
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
 
+#include <opencv2/core.hpp>
 #include <opencv2/imgcodecs.hpp>
+#include <opencv2/imgproc.hpp>
 
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <map>
@@ -18,6 +21,8 @@
 #include <unordered_set>
 #include <vector>
 #include <cstdint>
+
+namespace fs = std::filesystem;
 
 namespace {
 
@@ -104,8 +109,42 @@ bool isGrayscaleImage(const std::string& path) {
     }
     std::vector<cv::Mat> channels;
     cv::split(image, channels);
-    return cv::countNonZero(channels[0] != channels[1]) == 0 &&
-           cv::countNonZero(channels[1] != channels[2]) == 0;
+    // poke-3D fire sheets are authored greyscale but often encode with 1-level
+    // RGB noise after WebP→PNG (Rapidash FireCoreA mean 130.82/130.81/130.82).
+    // Exact channel equality misses them and they render as black lit albedo.
+    cv::Mat diff01, diff12;
+    cv::absdiff(channels[0], channels[1], diff01);
+    cv::absdiff(channels[1], channels[2], diff12);
+    double max01 = 0.0;
+    double max12 = 0.0;
+    cv::minMaxLoc(diff01, nullptr, &max01);
+    cv::minMaxLoc(diff12, nullptr, &max12);
+    return max01 <= 3.0 && max12 <= 3.0;
+}
+
+// Face parts are albedo even when the atlas happens to be colourless, so they
+// must never be mistaken for particle sheets (Psyduck's "LIris" is greyscale).
+bool isFacePartName(const std::string& name) {
+    const std::string lower = toLowerAscii(name);
+    for (const char* key : {"eye", "iris", "pupil", "mouth", "tongue", "teeth"}) {
+        if (lower.find(key) != std::string::npos) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// Effect overlays that the games drive with a fire/aura shader. poke-3D keeps
+// them as ordinary materials, so the name is the only reliable marker when the
+// mesh ships no texture at all (Rotom's "FireMask" shell).
+bool isEffectPartName(const std::string& name) {
+    const std::string lower = toLowerAscii(name);
+    for (const char* key : {"fire", "flame", "smoke", "aura", "glow", "spark"}) {
+        if (lower.find(key) != std::string::npos) {
+            return true;
+        }
+    }
+    return false;
 }
 
 // Pokemon XY convention: a diffuse "<base>1.png" is accompanied by
@@ -179,6 +218,317 @@ void resolveAllPokemonTextures(ObjMesh& mesh) {
     }
 }
 
+// True cutout shapes have both near-transparent and near-opaque texels (iris,
+// flame masks). Mid-range film opacity (Greedent's eye atlas stuck around ~150,
+// Beedrill's wing Mask at ~93) is not a shape — treating it as alpha just makes
+// a flat eye plate look like a darker polygon on the face.
+bool diffuseTextureHasCutoutAlpha(const std::string& base_dir, const std::string& relative) {
+    const std::string path = resolveAssetPath(base_dir, relative);
+    if (path.empty()) {
+        return false;
+    }
+    const cv::Mat image = cv::imread(path, cv::IMREAD_UNCHANGED);
+    if (image.empty() || image.channels() != 4) {
+        return false;
+    }
+    double min_a = 0.0;
+    double max_a = 0.0;
+    cv::Mat alpha;
+    cv::extractChannel(image, alpha, 3);
+    cv::minMaxLoc(alpha, &min_a, &max_a);
+    if (min_a > 25.0 || max_a < 230.0) {
+        return false;
+    }
+    cv::Scalar mean;
+    cv::Scalar stddev;
+    cv::meanStdDev(alpha, mean, stddev);
+    return stddev[0] > 15.0;
+}
+
+struct MaterialAabb {
+    cv::Point3f lo{
+        std::numeric_limits<float>::max(),
+        std::numeric_limits<float>::max(),
+        std::numeric_limits<float>::max()};
+    cv::Point3f hi{
+        std::numeric_limits<float>::lowest(),
+        std::numeric_limits<float>::lowest(),
+        std::numeric_limits<float>::lowest()};
+    int triangles = 0;
+
+    void grow(const cv::Point3f& p) {
+        lo.x = std::min(lo.x, p.x);
+        lo.y = std::min(lo.y, p.y);
+        lo.z = std::min(lo.z, p.z);
+        hi.x = std::max(hi.x, p.x);
+        hi.y = std::max(hi.y, p.y);
+        hi.z = std::max(hi.z, p.z);
+    }
+
+    float volume() const {
+        return std::max(0.f, hi.x - lo.x) * std::max(0.f, hi.y - lo.y) *
+               std::max(0.f, hi.z - lo.z);
+    }
+};
+
+float aabbIou(const MaterialAabb& a, const MaterialAabb& b) {
+    const cv::Point3f lo(
+        std::max(a.lo.x, b.lo.x), std::max(a.lo.y, b.lo.y), std::max(a.lo.z, b.lo.z));
+    const cv::Point3f hi(
+        std::min(a.hi.x, b.hi.x), std::min(a.hi.y, b.hi.y), std::min(a.hi.z, b.hi.z));
+    const float inter = std::max(0.f, hi.x - lo.x) * std::max(0.f, hi.y - lo.y) *
+                        std::max(0.f, hi.z - lo.z);
+    const float uni = a.volume() + b.volume() - inter;
+    return uni > 1e-12f ? inter / uni : 0.f;
+}
+
+// Split a poke-3D eye expression atlas into sclera (bright/desaturated) and
+// eyelid (remaining eye paint) cutouts. Atlas field (black padding / face-tint)
+// becomes transparent in both.
+bool splitEyeSheetLayers(
+    ObjMesh& mesh,
+    const ObjMaterial& sheet_material,
+    std::string& sclera_tex_out,
+    std::string& lid_tex_out) {
+    if (sheet_material.diffuse_texture.empty()) {
+        return false;
+    }
+    const std::string path =
+        resolveAssetPath(mesh.base_dir, sheet_material.diffuse_texture);
+    if (path.empty()) {
+        return false;
+    }
+    cv::Mat image = cv::imread(path, cv::IMREAD_UNCHANGED);
+    if (image.empty()) {
+        return false;
+    }
+    cv::Mat bgr;
+    if (image.channels() == 4) {
+        cv::cvtColor(image, bgr, cv::COLOR_BGRA2BGR);
+    } else if (image.channels() == 3) {
+        bgr = image;
+    } else if (image.channels() == 1) {
+        cv::cvtColor(image, bgr, cv::COLOR_GRAY2BGR);
+    } else {
+        return false;
+    }
+
+    constexpr int kBins = 16;
+    constexpr int kBinSize = 256 / kBins;
+    std::vector<int> hist(kBins * kBins * kBins, 0);
+    const int total = bgr.rows * bgr.cols;
+    for (int y = 0; y < bgr.rows; ++y) {
+        const cv::Vec3b* row = bgr.ptr<cv::Vec3b>(y);
+        for (int x = 0; x < bgr.cols; ++x) {
+            const cv::Vec3b& px = row[x];
+            const int bb = std::min(px[0] / kBinSize, kBins - 1);
+            const int gg = std::min(px[1] / kBinSize, kBins - 1);
+            const int rr = std::min(px[2] / kBinSize, kBins - 1);
+            hist[(bb * kBins + gg) * kBins + rr] += 1;
+        }
+    }
+
+    std::vector<int> order(hist.size());
+    for (int i = 0; i < static_cast<int>(order.size()); ++i) {
+        order[i] = i;
+    }
+    std::partial_sort(
+        order.begin(),
+        order.begin() + std::min(6, static_cast<int>(order.size())),
+        order.end(),
+        [&](int a, int b) { return hist[a] > hist[b]; });
+
+    auto bin_center = [&](int idx) {
+        const int bb = idx / (kBins * kBins);
+        const int gg = (idx / kBins) % kBins;
+        const int rr = idx % kBins;
+        return cv::Vec3i(
+            bb * kBinSize + kBinSize / 2,
+            gg * kBinSize + kBinSize / 2,
+            rr * kBinSize + kBinSize / 2);
+    };
+    auto is_sclera_like = [](int b, int g, int r) {
+        const int max_c = std::max(b, std::max(g, r));
+        const int min_c = std::min(b, std::min(g, r));
+        const float lum = (b + g + r) / 3.f;
+        const float sat = max_c > 0 ? (max_c - min_c) / static_cast<float>(max_c) : 0.f;
+        return lum >= 170.f && sat <= 0.40f;
+    };
+
+    std::vector<cv::Vec3i> fields;
+    for (int n = 0; n < 6 && static_cast<int>(fields.size()) < 2; ++n) {
+        const int idx = order[n];
+        if (hist[idx] < total / 25) {
+            break;
+        }
+        const cv::Vec3i c = bin_center(idx);
+        if (is_sclera_like(c[0], c[1], c[2])) {
+            continue;
+        }
+        fields.push_back(c);
+    }
+
+    constexpr int kBgDistSq = 55 * 55;
+    cv::Mat sclera(bgr.size(), CV_8UC4);
+    cv::Mat lid(bgr.size(), CV_8UC4);
+    for (int y = 0; y < bgr.rows; ++y) {
+        const cv::Vec3b* row = bgr.ptr<cv::Vec3b>(y);
+        cv::Vec4b* sclera_row = sclera.ptr<cv::Vec4b>(y);
+        cv::Vec4b* lid_row = lid.ptr<cv::Vec4b>(y);
+        for (int x = 0; x < bgr.cols; ++x) {
+            const cv::Vec3b& px = row[x];
+            bool is_bg = fields.empty();
+            for (const cv::Vec3i& bg : fields) {
+                const int db = static_cast<int>(px[0]) - bg[0];
+                const int dg = static_cast<int>(px[1]) - bg[1];
+                const int dr = static_cast<int>(px[2]) - bg[2];
+                if (db * db + dg * dg + dr * dr <= kBgDistSq) {
+                    is_bg = true;
+                    break;
+                }
+            }
+            // Fallback: near-black padding when no field was classified.
+            if (fields.empty()) {
+                const int lum = (px[0] + px[1] + px[2]) / 3;
+                is_bg = lum <= 18;
+            }
+            const bool is_sclera = !is_bg && is_sclera_like(px[0], px[1], px[2]);
+            sclera_row[x] = cv::Vec4b(px[0], px[1], px[2], is_sclera ? 255 : 0);
+            lid_row[x] = cv::Vec4b(
+                px[0], px[1], px[2], (!is_bg && !is_sclera) ? 255 : 0);
+        }
+    }
+
+    sclera_tex_out = "eye_sclera_" + sheet_material.name + ".png";
+    lid_tex_out = "eye_lid_" + sheet_material.name + ".png";
+    if (!cv::imwrite((fs::path(mesh.base_dir) / sclera_tex_out).string(), sclera) ||
+        !cv::imwrite((fs::path(mesh.base_dir) / lid_tex_out).string(), lid)) {
+        return false;
+    }
+    return true;
+}
+
+// poke-3D ships sclera/lid on one atlas + a separate alpha iris (pupils). XY can
+// drop Iris1 when Eye1_Merged already composites lids over pupils; poke-3D's
+// sheet does not, so keep the iris between a sclera cutout and a lid cutout.
+// No camera-ward vertex bias — that pushed eyes through the brow.
+void fixPoke3dEyeLayers(ObjMesh& mesh) {
+    std::map<std::string, MaterialAabb> bounds;
+    for (std::size_t i = 0; i < mesh.triangles.size(); ++i) {
+        const std::string& mat_name = mesh.triangle_materials[i];
+        MaterialAabb& box = bounds[mat_name];
+        const ObjTriangle& tri = mesh.triangles[i];
+        for (int c = 0; c < 3; ++c) {
+            const int vi = tri.vertices[c];
+            if (vi >= 0 && vi < static_cast<int>(mesh.vertices.size())) {
+                box.grow(mesh.vertices[vi]);
+            }
+        }
+        box.triangles += 1;
+    }
+
+    std::map<std::string, bool> has_cutout;
+    for (const auto& entry : mesh.materials) {
+        has_cutout[entry.first] =
+            diffuseTextureHasCutoutAlpha(mesh.base_dir, entry.second.diffuse_texture);
+    }
+
+    constexpr float kMinIou = 0.90f;
+    std::vector<std::string> alpha_names;
+    for (const auto& entry : mesh.materials) {
+        if (has_cutout[entry.first]) {
+            alpha_names.push_back(entry.first);
+        }
+    }
+
+    for (const std::string& iris_name : alpha_names) {
+        auto alpha_it = mesh.materials.find(iris_name);
+        if (alpha_it == mesh.materials.end() || alpha_it->second.skip_draw) {
+            continue;
+        }
+        const auto alpha_bounds = bounds.find(iris_name);
+        if (alpha_bounds == bounds.end() || alpha_bounds->second.triangles == 0) {
+            continue;
+        }
+
+        std::string sheet_name;
+        for (const auto& opaque_entry : mesh.materials) {
+            if (opaque_entry.first == iris_name || has_cutout[opaque_entry.first] ||
+                opaque_entry.second.eye_layer != 0) {
+                continue;
+            }
+            const auto opaque_bounds = bounds.find(opaque_entry.first);
+            if (opaque_bounds == bounds.end() || opaque_bounds->second.triangles == 0) {
+                continue;
+            }
+            if (aabbIou(alpha_bounds->second, opaque_bounds->second) < kMinIou) {
+                continue;
+            }
+            sheet_name = opaque_entry.first;
+            break;
+        }
+        if (sheet_name.empty()) {
+            continue;
+        }
+        auto sheet_it = mesh.materials.find(sheet_name);
+        if (sheet_it == mesh.materials.end()) {
+            continue;
+        }
+
+        std::string sclera_tex;
+        std::string lid_tex;
+        if (!splitEyeSheetLayers(mesh, sheet_it->second, sclera_tex, lid_tex)) {
+            continue;
+        }
+
+        const std::string sclera_name = sheet_name + "__sclera";
+        const std::string lid_name = sheet_name + "__lid";
+
+        ObjMaterial sclera_mat = sheet_it->second;
+        sclera_mat.name = sclera_name;
+        sclera_mat.diffuse_texture = sclera_tex;
+        sclera_mat.eye_layer = 1;
+        sclera_mat.alpha_clip = false;
+
+        ObjMaterial lid_mat = sheet_it->second;
+        lid_mat.name = lid_name;
+        lid_mat.diffuse_texture = lid_tex;
+        lid_mat.eye_layer = 3;
+        lid_mat.alpha_clip = false;
+
+        alpha_it->second.eye_layer = 2;
+        alpha_it->second.skip_draw = false;
+
+        mesh.materials[sclera_name] = sclera_mat;
+        mesh.materials[lid_name] = lid_mat;
+        mesh.materials.erase(sheet_name);
+
+        const std::size_t tri_count = mesh.triangles.size();
+        for (std::size_t ti = 0; ti < tri_count; ++ti) {
+            if (mesh.triangle_materials[ti] != sheet_name) {
+                continue;
+            }
+            mesh.triangle_materials[ti] = sclera_name;
+            // Lid uses the same geometry (no outward bias).
+            mesh.triangles.push_back(mesh.triangles[ti]);
+            mesh.triangle_materials.push_back(lid_name);
+        }
+
+        std::cerr << "Eye fix: sclera/iris/lid '" << sheet_name << "' -> '"
+                  << sclera_name << "' + '" << iris_name << "' + '" << lid_name
+                  << "'\n";
+    }
+
+    // An iris promoted into the eye stack is albedo, never a particle sheet:
+    // poke-3D irises are greyscale often enough to trip the effect heuristic,
+    // and drawing a pupil additively erases it (Porygon2, Psyduck).
+    for (auto& entry : mesh.materials) {
+        if (entry.second.eye_layer != 0) {
+            entry.second.is_effect = false;
+        }
+    }
+}
+
 // Bounds of the Pokemon proper, so that oversized particle volumes do not drive
 // the up-axis detection or the on-card scale.
 void computeBodyBounds(ObjMesh& mesh) {
@@ -211,6 +561,244 @@ void computeBodyBounds(ObjMesh& mesh) {
     mesh.body_max_bounds = found ? hi : mesh.max_bounds;
 }
 
+bool quatIsAxisAligned(float x, float y, float z, float w, float tol = 0.12f) {
+    const float comps[4] = {x, y, z, w};
+    for (float c : comps) {
+        const float a = std::fabs(c);
+        if (a > tol && std::fabs(a - 1.f) > tol &&
+            std::fabs(a - 0.70710678f) > tol) {
+            return false;
+        }
+    }
+    return true;
+}
+
+// True when R maps each basis vector onto a world axis (90°/180° permutations).
+// Ponyta's shared root is one of these: after baking, the mesh is already Y-up
+// and axis-aligned. Undoing it remaps length onto X and leaves the horse sideways.
+bool matIsAxisPermutation(const aiMatrix3x3& R, float tol = 0.15f) {
+    for (int col = 0; col < 3; ++col) {
+        const float a0 = std::fabs(R[0][col]);
+        const float a1 = std::fabs(R[1][col]);
+        const float a2 = std::fabs(R[2][col]);
+        const float dominant = std::max(a0, std::max(a1, a2));
+        if (dominant < 1.f - tol) {
+            return false;
+        }
+    }
+    return true;
+}
+
+// Breloom / Toxicroak ship every mesh node with the same non-axis-aligned
+// rotation, so the character is permanently tilted once transforms are baked.
+// Undo that shared root rotation; detectOrientation can then find a real up axis.
+bool undoSharedTiltedRoot(
+    ObjMesh& mesh,
+    const std::vector<aiMatrix4x4>& mesh_transforms) {
+    if (mesh_transforms.empty()) {
+        return false;
+    }
+    aiVector3D scale0;
+    aiQuaternion quat0;
+    aiVector3D pos0;
+    mesh_transforms.front().Decompose(scale0, quat0, pos0);
+    if (quatIsAxisAligned(quat0.x, quat0.y, quat0.z, quat0.w)) {
+        return false;
+    }
+    // Axis permutations already yield a clean AABB after bake (Ponyta).
+    if (matIsAxisPermutation(quat0.GetMatrix())) {
+        return false;
+    }
+    for (const aiMatrix4x4& t : mesh_transforms) {
+        aiVector3D scale;
+        aiQuaternion quat;
+        aiVector3D pos;
+        t.Decompose(scale, quat, pos);
+        if (std::fabs(quat.x - quat0.x) > 0.02f ||
+            std::fabs(quat.y - quat0.y) > 0.02f ||
+            std::fabs(quat.z - quat0.z) > 0.02f ||
+            std::fabs(quat.w - quat0.w) > 0.02f) {
+            return false;
+        }
+        if (quatIsAxisAligned(quat.x, quat.y, quat.z, quat.w) ||
+            matIsAxisPermutation(quat.GetMatrix())) {
+            return false;
+        }
+    }
+
+    aiMatrix3x3 R = quat0.GetMatrix();
+    R.Inverse();
+    for (cv::Point3f& v : mesh.vertices) {
+        const aiVector3D p = R * aiVector3D(v.x, v.y, v.z);
+        v = {p.x, p.y, p.z};
+    }
+    for (cv::Point3f& n : mesh.normals) {
+        aiVector3D p = R * aiVector3D(n.x, n.y, n.z);
+        p.NormalizeSafe();
+        n = {p.x, p.y, p.z};
+    }
+
+    // The undo leaves an axis-aligned cloud, but the feet may sit on -Z rather
+    // than +Y (Breloom). Pick ±Y/±Z by requiring BOTH ends of the silhouette to
+    // carry geometry (feet and head/hat). Maximising base contact alone stood
+    // Breloom on its mushroom cap.
+    struct Cand {
+        int axis = 1;
+        float sign = 1.f;
+        int both_ends = -1;
+        float foot_off = 1e9f;
+    };
+    Cand best;
+    const int grid = 32;
+    for (int axis = 1; axis <= 2; ++axis) {
+        for (float sign : {1.f, -1.f}) {
+            float lo_u = std::numeric_limits<float>::max();
+            float hi_u = std::numeric_limits<float>::lowest();
+            float lo0 = std::numeric_limits<float>::max();
+            float hi0 = std::numeric_limits<float>::lowest();
+            float lo1 = std::numeric_limits<float>::max();
+            float hi1 = std::numeric_limits<float>::lowest();
+            const int a0 = 0;
+            const int a1 = axis == 1 ? 2 : 1;
+            double sum0 = 0.0;
+            double sum1 = 0.0;
+            for (const cv::Point3f& v : mesh.vertices) {
+                const float c[3] = {v.x, v.y, v.z};
+                lo_u = std::min(lo_u, c[axis]);
+                hi_u = std::max(hi_u, c[axis]);
+                lo0 = std::min(lo0, c[a0]);
+                hi0 = std::max(hi0, c[a0]);
+                lo1 = std::min(lo1, c[a1]);
+                hi1 = std::max(hi1, c[a1]);
+                sum0 += c[a0];
+                sum1 += c[a1];
+            }
+            const float span = std::max(hi_u - lo_u, 1e-6f);
+            const float base_lim =
+                sign > 0.f ? lo_u + 0.08f * span : hi_u - 0.08f * span;
+            const float top_lim =
+                sign > 0.f ? hi_u - 0.08f * span : lo_u + 0.08f * span;
+            const float span0 = std::max(hi0 - lo0, 1e-6f);
+            const float span1 = std::max(hi1 - lo1, 1e-6f);
+            const double cen0 = sum0 / static_cast<double>(mesh.vertices.size());
+            const double cen1 = sum1 / static_cast<double>(mesh.vertices.size());
+            std::vector<unsigned char> base_cells(grid * grid, 0);
+            std::vector<unsigned char> top_cells(grid * grid, 0);
+            int base_occ = 0;
+            int top_occ = 0;
+            double foot0 = 0.0;
+            double foot1 = 0.0;
+            int foot_n = 0;
+            for (const cv::Point3f& v : mesh.vertices) {
+                const float c[3] = {v.x, v.y, v.z};
+                const int c0 = std::clamp(
+                    static_cast<int>((c[a0] - lo0) / span0 * (grid - 1)), 0, grid - 1);
+                const int c1 = std::clamp(
+                    static_cast<int>((c[a1] - lo1) / span1 * (grid - 1)), 0, grid - 1);
+                const bool in_base =
+                    sign > 0.f ? c[axis] <= base_lim : c[axis] >= base_lim;
+                const bool in_top =
+                    sign > 0.f ? c[axis] >= top_lim : c[axis] <= top_lim;
+                if (in_base) {
+                    unsigned char& cell = base_cells[c1 * grid + c0];
+                    if (!cell) {
+                        cell = 1;
+                        base_occ++;
+                    }
+                    foot0 += c[a0];
+                    foot1 += c[a1];
+                    foot_n++;
+                }
+                if (in_top) {
+                    unsigned char& cell = top_cells[c1 * grid + c0];
+                    if (!cell) {
+                        cell = 1;
+                        top_occ++;
+                    }
+                }
+            }
+            const int both = std::min(base_occ, top_occ);
+            const float foot_off =
+                foot_n > 0
+                    ? static_cast<float>(std::sqrt(
+                          std::pow(foot0 / foot_n - cen0, 2) +
+                          std::pow(foot1 / foot_n - cen1, 2))) /
+                          span
+                    : 1e9f;
+            if (both > best.both_ends ||
+                (both == best.both_ends && foot_off < best.foot_off)) {
+                best = {axis, sign, both, foot_off};
+            }
+        }
+    }
+
+    if (best.both_ends > 0 && !(best.axis == 1 && best.sign > 0.f)) {
+        cv::Vec3f uy(0.f, 0.f, 0.f);
+        uy[best.axis] = best.sign;
+        cv::Vec3f ux(1.f, 0.f, 0.f);
+        cv::Vec3f uz = ux.cross(uy);
+        const float len = static_cast<float>(cv::norm(uz));
+        if (len > 1e-6f) {
+            uz *= 1.f / len;
+            ux = uy.cross(uz);
+            const cv::Matx33f M(
+                ux[0], ux[1], ux[2],
+                uy[0], uy[1], uy[2],
+                uz[0], uz[1], uz[2]);
+            for (cv::Point3f& v : mesh.vertices) {
+                const cv::Vec3f p(v.x, v.y, v.z);
+                const cv::Vec3f q = M * p;
+                v = {q[0], q[1], q[2]};
+            }
+            for (cv::Point3f& n : mesh.normals) {
+                const cv::Vec3f p(n.x, n.y, n.z);
+                cv::Vec3f q = M * p;
+                const float nlen = static_cast<float>(cv::norm(q));
+                if (nlen > 1e-8f) {
+                    q *= 1.f / nlen;
+                }
+                n = {q[0], q[1], q[2]};
+            }
+        }
+    }
+
+    float ymin = std::numeric_limits<float>::max();
+    float xmin = std::numeric_limits<float>::max();
+    float xmax = std::numeric_limits<float>::lowest();
+    float zmin = std::numeric_limits<float>::max();
+    float zmax = std::numeric_limits<float>::lowest();
+    for (const cv::Point3f& v : mesh.vertices) {
+        ymin = std::min(ymin, v.y);
+        xmin = std::min(xmin, v.x);
+        xmax = std::max(xmax, v.x);
+        zmin = std::min(zmin, v.z);
+        zmax = std::max(zmax, v.z);
+    }
+    const cv::Point3f shift(
+        -0.5f * (xmin + xmax),
+        -ymin,
+        -0.5f * (zmin + zmax));
+    for (cv::Point3f& v : mesh.vertices) {
+        v.x += shift.x;
+        v.y += shift.y;
+        v.z += shift.z;
+    }
+
+    mesh.min_bounds = cv::Point3f(
+        std::numeric_limits<float>::max(),
+        std::numeric_limits<float>::max(),
+        std::numeric_limits<float>::max());
+    mesh.max_bounds = cv::Point3f(
+        std::numeric_limits<float>::lowest(),
+        std::numeric_limits<float>::lowest(),
+        std::numeric_limits<float>::lowest());
+    for (const cv::Point3f& v : mesh.vertices) {
+        updateBounds(mesh, v);
+    }
+    std::cerr << "Upright: undid shared tilted root rotation\n";
+    return true;
+}
+
 struct SubMesh {
     const aiMesh* mesh = nullptr;
     aiMatrix4x4 transform;
@@ -231,7 +819,9 @@ void collectSubMeshes(
         SubMesh sub;
         sub.mesh = aimesh;
         sub.transform = global;
-        sub.name = aimesh->mName.C_Str();
+        // Prefer the node name: poke-3D puts part labels on nodes
+        // (pm0910_00_00_ChigoASkin) while the mesh is often just "Mesh.001".
+        sub.name = node->mName.length > 0 ? node->mName.C_Str() : aimesh->mName.C_Str();
         sub.lo = cv::Point3f(std::numeric_limits<float>::max(),
                              std::numeric_limits<float>::max(),
                              std::numeric_limits<float>::max());
@@ -320,6 +910,45 @@ void markAlternateExpressionParts(std::vector<SubMesh>& subs) {
             sub.hi.z - body->hi.z > tolerance * span.z ||
             body->lo.z - sub.lo.z > tolerance * span.z;
         if (outside) {
+            sub.skip = true;
+        }
+    }
+}
+
+// poke-3D Greedent ships held-item berry meshes (Chigo/Himeri/Nana *Skin) as
+// siblings of BodySkin. With no animation they hang under the feet in a line.
+// Keep anatomy skins (TailSkin, WingSkin, …); drop the rest when BodySkin is
+// present.
+void markHeldItemSkins(std::vector<SubMesh>& subs) {
+    bool has_body_skin = false;
+    for (const SubMesh& sub : subs) {
+        const std::string lower = toLowerAscii(sub.name);
+        if (lower.find("bodyskin") != std::string::npos) {
+            has_body_skin = true;
+            break;
+        }
+    }
+    if (!has_body_skin) {
+        return;
+    }
+
+    const char* keep_keys[] = {
+        "body", "tail", "wing", "hair", "ear", "hand", "foot", "leg", "arm",
+        "head", "eye", "mouth", "cloth", "cape", "scarf", "horn", "shell",
+        "fin", "tooth", "fang", "claw", "mane", "fur"};
+    for (SubMesh& sub : subs) {
+        const std::string lower = toLowerAscii(sub.name);
+        if (lower.find("skin") == std::string::npos) {
+            continue;
+        }
+        bool keep = false;
+        for (const char* key : keep_keys) {
+            if (lower.find(key) != std::string::npos) {
+                keep = true;
+                break;
+            }
+        }
+        if (!keep) {
             sub.skip = true;
         }
     }
@@ -428,6 +1057,7 @@ bool loadObjMesh(const std::string& obj_path, ObjMesh& mesh) {
             cv::Point3f point{};
             iss >> point.x >> point.y >> point.z;
             mesh.vertices.push_back(point);
+            mesh.colors.emplace_back(1.f, 1.f, 1.f);
             updateBounds(mesh, point);
             continue;
         }
@@ -528,6 +1158,70 @@ bool loadObjMesh(const std::string& obj_path, ObjMesh& mesh) {
     return !mesh.vertices.empty() && !mesh.triangles.empty();
 }
 
+bool isGlbPath(const std::string& path) {
+    if (path.size() < 4) {
+        return false;
+    }
+    std::string ext = toLowerAscii(path.substr(path.size() - 4));
+    return ext == ".glb";
+}
+
+// Assimp names embedded GLB textures "*0", "*1", ... Write the compressed
+// blob next to the mesh so gl_renderer can cv::imread it like a sidecar PNG.
+std::string extractEmbeddedTexture(
+    const aiScene* scene, const std::string& tex_ref, const std::string& base_dir) {
+    if (tex_ref.empty() || tex_ref[0] != '*' || scene == nullptr) {
+        return tex_ref;
+    }
+    std::size_t end = 1;
+    while (end < tex_ref.size() &&
+           std::isdigit(static_cast<unsigned char>(tex_ref[end]))) {
+        end++;
+    }
+    if (end == 1) {
+        return "";
+    }
+    const unsigned int index = static_cast<unsigned int>(std::stoul(tex_ref.substr(1, end - 1)));
+    if (index >= scene->mNumTextures || scene->mTextures[index] == nullptr) {
+        return "";
+    }
+    const aiTexture* tex = scene->mTextures[index];
+
+    std::string ext = "png";
+    if (tex->achFormatHint[0] != '\0') {
+        ext.clear();
+        for (int i = 0; i < 3 && tex->achFormatHint[i] != '\0'; ++i) {
+            ext.push_back(static_cast<char>(std::tolower(
+                static_cast<unsigned char>(tex->achFormatHint[i]))));
+        }
+        if (ext.empty()) {
+            ext = "png";
+        }
+    }
+
+    const std::string filename = "embedded_" + std::to_string(index) + "." + ext;
+    const fs::path out_path = fs::path(base_dir) / filename;
+    std::error_code ec;
+    fs::create_directories(out_path.parent_path(), ec);
+
+    std::ofstream out(out_path, std::ios::binary);
+    if (!out) {
+        return "";
+    }
+    if (tex->mHeight == 0) {
+        // Compressed (PNG/JPEG/WebP) blob; mWidth is the byte count.
+        out.write(reinterpret_cast<const char*>(tex->pcData),
+                  static_cast<std::streamsize>(tex->mWidth));
+    } else {
+        // Uncompressed BGRA texels.
+        const std::size_t bytes =
+            static_cast<std::size_t>(tex->mWidth) * tex->mHeight * 4;
+        out.write(reinterpret_cast<const char*>(tex->pcData),
+                  static_cast<std::streamsize>(bytes));
+    }
+    return filename;
+}
+
 bool loadAssimpMesh(const std::string& path, ObjMesh& mesh) {
     mesh = ObjMesh{};
     mesh.base_dir = parentDirectory(path);
@@ -561,16 +1255,34 @@ bool loadAssimpMesh(const std::string& path, ObjMesh& mesh) {
         return false;
     }
 
-    // Materials
+    const bool glb_source = isGlbPath(path);
+
+    // Materials. Keys stay mat_N so triangle slots stay stable; mat.name keeps
+    // the authored label (Eye, FireCoreA, green) for effect/eye heuristics.
     for (unsigned int mi = 0; mi < scene->mNumMaterials; ++mi) {
         const aiMaterial* aimat = scene->mMaterials[mi];
-        const std::string name = "mat_" + std::to_string(mi);
+        const std::string key = "mat_" + std::to_string(mi);
         ObjMaterial mat;
-        mat.name = name;
+        mat.name = key;
+        aiString authored_name;
+        if (aimat->Get(AI_MATKEY_NAME, authored_name) == AI_SUCCESS &&
+            authored_name.length > 0) {
+            mat.name = authored_name.C_Str();
+        }
 
-        aiColor3D diffuse(0.8f, 0.8f, 0.8f);
-        if (aimat->Get(AI_MATKEY_COLOR_DIFFUSE, diffuse) == AI_SUCCESS) {
-            mat.diffuse = cv::Vec3f(diffuse.r, diffuse.g, diffuse.b);
+        aiColor4D base(0.8f, 0.8f, 0.8f, 1.f);
+        if (aimat->Get(AI_MATKEY_BASE_COLOR, base) == AI_SUCCESS) {
+            mat.diffuse = cv::Vec3f(base.r, base.g, base.b);
+            mat.opacity = base.a;
+        } else {
+            aiColor3D diffuse(0.8f, 0.8f, 0.8f);
+            if (aimat->Get(AI_MATKEY_COLOR_DIFFUSE, diffuse) == AI_SUCCESS) {
+                mat.diffuse = cv::Vec3f(diffuse.r, diffuse.g, diffuse.b);
+            }
+        }
+        float opacity = mat.opacity;
+        if (aimat->Get(AI_MATKEY_OPACITY, opacity) == AI_SUCCESS) {
+            mat.opacity = opacity;
         }
 
         aiString tex;
@@ -582,10 +1294,26 @@ bool loadAssimpMesh(const std::string& path, ObjMesh& mesh) {
             if (tex_path.rfind("./", 0) == 0) {
                 tex_path = tex_path.substr(2);
             }
+            if (!tex_path.empty() && tex_path[0] == '*') {
+                tex_path = extractEmbeddedTexture(scene, tex_path, mesh.base_dir);
+            }
             mat.diffuse_texture = tex_path;
         }
-        resolvePokemonTextureSet(mat, mesh.base_dir);
-        mesh.materials[name] = mat;
+        if (!glb_source) {
+            resolvePokemonTextureSet(mat, mesh.base_dir);
+        } else if (!isFacePartName(mat.name)) {
+            if (!mat.diffuse_texture.empty()) {
+                // poke-3D fire/gas sheets are greyscale intensity maps with no
+                // normal sibling (Rapidash FireCoreA/FireStenA). Same rule as XY.
+                mat.is_effect =
+                    isGrayscaleImage(resolveAssetPath(mesh.base_dir, mat.diffuse_texture));
+            } else if (mat.opacity < 0.999f && isEffectPartName(mat.name)) {
+                // Untextured overlay shell wrapping the body. Alpha-blending it
+                // just tints the whole Pokemon dark (Rotom Heat).
+                mat.is_effect = true;
+            }
+        }
+        mesh.materials[key] = mat;
     }
     if (mesh.materials.empty()) {
         ObjMaterial fallback;
@@ -621,6 +1349,15 @@ bool loadAssimpMesh(const std::string& path, ObjMesh& mesh) {
                 mesh.texcoords.emplace_back(uv.x, uv.y);
             } else {
                 mesh.texcoords.emplace_back(0.f, 0.f);
+            }
+
+            // poke-3D Baltoy-style assets colour the mesh with COLOR_0 and ship
+            // no diffuse texture. Assimp exposes them as per-vertex RGBA.
+            if (aimesh->HasVertexColors(0)) {
+                const aiColor4D& c = aimesh->mColors[0][i];
+                mesh.colors.emplace_back(c.r, c.g, c.b);
+            } else {
+                mesh.colors.emplace_back(1.f, 1.f, 1.f);
             }
         }
 
@@ -660,13 +1397,22 @@ bool loadAssimpMesh(const std::string& path, ObjMesh& mesh) {
     std::vector<SubMesh> sub_meshes;
     collectSubMeshes(scene, scene->mRootNode, aiMatrix4x4(), sub_meshes);
     markAlternateExpressionParts(sub_meshes);
+    markHeldItemSkins(sub_meshes);
 
+    std::vector<aiMatrix4x4> mesh_transforms;
     for (const SubMesh& sub : sub_meshes) {
         if (sub.skip) {
             std::cerr << "Skipping alternate part '" << sub.name << "' in " << path << "\n";
             continue;
         }
         append_mesh(sub.mesh, sub.transform);
+        mesh_transforms.push_back(sub.transform);
+    }
+
+    // poke-3D: same as XY Eye1_Merged — drop coplanar iris, punch sheet bg.
+    if (glb_source) {
+        fixPoke3dEyeLayers(mesh);
+        undoSharedTiltedRoot(mesh, mesh_transforms);
     }
 
     computeBodyBounds(mesh);

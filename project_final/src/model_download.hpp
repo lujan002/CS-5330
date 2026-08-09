@@ -25,6 +25,13 @@ public:
         std::vector<ModelEntry>& out_models,
         std::string& error);
 
+    // Same as download(), keyed by national dex number (#0003 -> Venusaur).
+    // Prefer this when driving the overlay from a card match.
+    bool downloadByDex(
+        int dex,
+        std::vector<ModelEntry>& out_models,
+        std::string& error);
+
     // Index entries whose name contains the query, for "did you mean" messages.
     std::vector<std::string> suggest(const std::string& query, std::size_t limit = 8) const;
 

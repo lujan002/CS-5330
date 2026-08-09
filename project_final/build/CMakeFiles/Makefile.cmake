@@ -68,5 +68,6 @@ set(CMAKE_MAKEFILE_PRODUCTS
 set(CMAKE_DEPEND_INFO_FILES
   "CMakeFiles/ar_card.dir/DependInfo.cmake"
   "CMakeFiles/validate_models.dir/DependInfo.cmake"
+  "CMakeFiles/calibrate_camera.dir/DependInfo.cmake"
   "CMakeFiles/match_image.dir/DependInfo.cmake"
   )

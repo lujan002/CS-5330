@@ -8,6 +8,7 @@
 #include <opencv2/imgproc.hpp>
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <cstdint>
 #include <iostream>
@@ -21,6 +22,7 @@ struct GpuVertex {
     float position[3];
     float normal[3];
     float texcoord[2];
+    float color[3];
 };
 
 struct GpuDrawRange {
@@ -36,8 +38,19 @@ struct GpuMaterialTextures {
     unsigned int color2 = 0;
     unsigned int alpha_mask = 0;
     bool has_alpha = false;
+    // Discard low-alpha texels but stay in the opaque pass (poke-3D eye sheets).
+    bool alpha_clip = false;
+    // poke-3D eye stack: 0 = none, 1 = sclera, 2 = iris, 3 = lid.
+    int eye_layer = 0;
+    // A face decal that did not need splitting into an eye stack, so it is still
+    // a flat quad sitting exactly on the head (Mewtwo's "l_eye"). Coplanar with
+    // the skull, it loses GL_LESS and vanishes without a bias.
+    bool face_decal = false;
     // Unlit intensity map (Charizard's tail flame) blended additively.
     bool additive = false;
+    // Flat eye plates shade darker than the curved head under the soft key;
+    // lift ambient so the socket doesn't read as a darker polygon.
+    bool flatten_light = false;
     cv::Vec3f tint{1.f, 1.f, 1.f};
 };
 
@@ -48,6 +61,7 @@ struct GpuMesh {
     std::vector<GpuDrawRange> draw_ranges;
     std::vector<GpuMaterialTextures> textures;
     std::vector<cv::Vec3f> diffuse_colors;
+    std::vector<float> diffuse_opacity;
     std::vector<std::string> material_names;
     std::vector<MaterialReport> reports;
     // Object/mesh space → card space (same rotation used for vertex placement).
@@ -59,6 +73,7 @@ const char* kVertexShader = R"(
 layout(location = 0) in vec3 aPos;
 layout(location = 1) in vec3 aNormal;
 layout(location = 2) in vec2 aTexCoord;
+layout(location = 3) in vec3 aColor;
 
 uniform mat4 uMVP;
 uniform mat4 uView;
@@ -66,12 +81,14 @@ uniform mat4 uView;
 out vec3 vNormalObject;
 out vec3 vViewPos;
 out vec2 vTexCoord;
+out vec3 vColor;
 
 void main() {
     gl_Position = uMVP * vec4(aPos, 1.0);
     vNormalObject = aNormal;
     vViewPos = (uView * vec4(aPos, 1.0)).xyz;
     vTexCoord = aTexCoord;
+    vColor = aColor;
 }
 )";
 
@@ -80,6 +97,7 @@ const char* kFragmentShader = R"(
 in vec3 vNormalObject;
 in vec3 vViewPos;
 in vec2 vTexCoord;
+in vec3 vColor;
 
 uniform sampler2D uDiffuseMap;
 uniform sampler2D uNormalMap;
@@ -88,19 +106,30 @@ uniform sampler2D uColor2Map;
 uniform sampler2D uAlphaMask;
 
 uniform vec3 uDiffuse;
+uniform float uOpacity;
 uniform bool uUseDiffuseMap;
 uniform bool uUseNormalMap;
 uniform bool uUseSpecularMap;
 uniform bool uUseColor2Map;
 uniform bool uUseAlphaMask;
 uniform bool uAdditive;
+uniform bool uFlattenLight;
+uniform bool uUseTextureAlpha;
 uniform vec3 uEffectTint;
 uniform mat3 uNormalMatrix;
 
 out vec4 FragColor;
 
 void main() {
-    vec4 diffuse_sample = uUseDiffuseMap ? texture(uDiffuseMap, vTexCoord) : vec4(uDiffuse, 1.0);
+    vec4 diffuse_sample = uUseDiffuseMap ? texture(uDiffuseMap, vTexCoord)
+                                         : vec4(uDiffuse, uOpacity);
+    // Vertex colours tint untextured meshes (Baltoy). Several poke-3D GLBs also
+    // ship a constant ~0.5 COLOR_0 on top of a real albedo (Abomasnow, Quilava);
+    // multiplying that in halves the texture, so only apply COLOR_0 when there
+    // is no diffuse map.
+    if (!uUseDiffuseMap) {
+        diffuse_sample.rgb *= vColor;
+    }
     if (uUseAlphaMask) {
         diffuse_sample.a *= texture(uAlphaMask, vTexCoord).a;
     }
@@ -116,6 +145,15 @@ void main() {
         FragColor = vec4(glow * intensity, intensity);
         return;
     }
+
+    // poke-3D body atlases often ship film opacity in alpha (Greedent/Skwovet
+    // ~150, Yanmega wings stuck at 92) without being cutouts. Blending is always
+    // on, so writing that alpha makes solid fur look ghostly. Only honour the
+    // texture alpha when loadTexture classified it as a real 0..255 cutout.
+    if (!uUseTextureAlpha) {
+        diffuse_sample.a = uOpacity;
+    }
+
     // Iris (and other cutout maps) store transparency in alpha; RGB is black there.
     if (diffuse_sample.a < 0.08) {
         discard;
@@ -137,17 +175,23 @@ void main() {
     vec3 base = diffuse_sample.rgb;
 
     // Soft key + fill in view space. Ambient-heavy so the model stays readable
-    // from above the card without camera-dependent blotches.
+    // from above the card without camera-dependent blotches. Eye plates get an
+    // even flatter light so a coplanar socket doesn't shade darker than the head.
     vec3 key_dir = normalize(vec3(0.25, 0.55, 0.80));
     vec3 fill_dir = normalize(vec3(-0.40, 0.20, 0.55));
     float key_n_dot_l = max(dot(N, key_dir), 0.0);
     float fill_n_dot_l = max(dot(N, fill_dir), 0.0);
-    float light = clamp(0.62 + 0.28 * key_n_dot_l + 0.12 * fill_n_dot_l, 0.0, 1.0);
+    float light = uFlattenLight
+        ? clamp(0.88 + 0.08 * key_n_dot_l + 0.04 * fill_n_dot_l, 0.0, 1.0)
+        : clamp(0.62 + 0.28 * key_n_dot_l + 0.12 * fill_n_dot_l, 0.0, 1.0);
 
     float specular_mask = uUseSpecularMap ? texture(uSpecularMap, vTexCoord).r : 0.15;
     vec3 V = normalize(-vViewPos);
     vec3 H_key = normalize(key_dir + V);
     float spec = pow(max(dot(N, H_key), 0.0), 48.0) * specular_mask * 0.18;
+    if (uFlattenLight) {
+        spec *= 0.25;
+    }
 
     float rim = pow(1.0 - max(dot(N, V), 0.0), 3.0) * 0.08;
     vec3 rim_color = vec3(0.35, 0.45, 0.55);
@@ -285,11 +329,22 @@ TextureInfo loadTexture(const std::string& path) {
         cv::Mat alpha;
         cv::extractChannel(rgba, alpha, 3);
         cv::minMaxLoc(alpha, &min_a, &max_a);
-        info.has_alpha = max_a < 250.0 || min_a < 250.0;
+        // True cutouts span near-0 to near-255 (iris, flame). Mid-range film
+        // opacity (Greedent eyes ~150, Beedrill wings ~93) is not transparency.
         cv::Scalar mean;
         cv::Scalar stddev;
         cv::meanStdDev(alpha, mean, stddev);
         info.alpha_varies = stddev[0] > 15.0;
+        info.has_alpha = info.alpha_varies && min_a <= 25.0 && max_a >= 230.0;
+        // Film opacity (Skwovet/Greedent body ~150, Yanmega wings stuck at 92)
+        // is not a cutout. Keep authored RGB but force the atlas opaque so
+        // blending cannot ghost the card through solid fur/wings.
+        if (!info.has_alpha && min_a < 250.0) {
+            std::vector<cv::Mat> ch;
+            cv::split(rgba, ch);
+            ch[3].setTo(255);
+            cv::merge(ch, rgba);
+        }
     } else if (image.channels() == 3) {
         cv::cvtColor(image, rgba, cv::COLOR_BGR2RGBA);
     } else if (image.channels() == 1) {
@@ -309,12 +364,20 @@ TextureInfo loadTexture(const std::string& path) {
     unsigned int texture = 0;
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    // poke-3D palette atlases are tiny (Breloom is 4×32) with real 0/255 cutout
+    // alpha. Linear filtering bleeds the transparent padding into neighbouring
+    // colours and the snout/face reads as a ghost. Nearest keeps the authored
+    // blocks opaque.
+    const bool palette_atlas = rgba.cols <= 64 && rgba.rows <= 64;
+    const int filter = palette_atlas ? GL_NEAREST : GL_LINEAR;
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);
     // Eye/Mouth/Iris (and BodyB) UVs sit outside [0,1] on the XY atlas; clamp
     // pins them to the black border. Repeat matches the game's wrap sampling.
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    // Palettes must clamp: repeating a 4px-wide strip samples the a=0 gutter.
+    const int wrap = palette_atlas ? GL_CLAMP_TO_EDGE : GL_REPEAT;
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap);
     glTexImage2D(
         GL_TEXTURE_2D,
         0,
@@ -336,6 +399,15 @@ TextureInfo loadMaterialTexture(const std::string& base_dir, const std::string& 
         return TextureInfo();
     }
     return loadTexture(path);
+}
+
+bool containsInsensitive(const std::string& haystack, const std::string& needle) {
+    const auto at = std::search(
+        haystack.begin(), haystack.end(), needle.begin(), needle.end(),
+        [](unsigned char a, unsigned char b) {
+            return std::tolower(a) == std::tolower(b);
+        });
+    return at != haystack.end();
 }
 
 void bindTexture2D(unsigned int unit, unsigned int texture_id, int uniform_loc, int sampler_unit) {
@@ -536,21 +608,56 @@ bool GLRenderer::uploadMesh(
         maps.additive = entry.second.is_effect;
         if (maps.additive) {
             maps.has_alpha = true;
-            maps.tint = entry.second.diffuse_texture.find("Fire") != std::string::npos
-                            ? cv::Vec3f(1.00f, 0.42f, 0.10f)
-                            : cv::Vec3f(1.00f, 1.00f, 1.00f);
+            // Embedded GLB textures lose the Fire* filename; check material name.
+            const std::string& label = entry.second.name;
+            const bool fire =
+                entry.second.diffuse_texture.find("Fire") != std::string::npos ||
+                label.find("Fire") != std::string::npos ||
+                label.find("fire") != std::string::npos;
+            if (maps.diffuse == 0) {
+                // Untextured overlay: its own baseColor is the glow colour.
+                maps.tint = entry.second.diffuse;
+            } else {
+                maps.tint = fire ? cv::Vec3f(1.00f, 0.42f, 0.10f)
+                                 : cv::Vec3f(1.00f, 1.00f, 1.00f);
+            }
+        }
+        maps.alpha_clip = entry.second.alpha_clip;
+        maps.eye_layer = entry.second.eye_layer;
+        const bool eye_name = containsInsensitive(entry.second.name, "eye") ||
+                              containsInsensitive(entry.second.name, "iris") ||
+                              containsInsensitive(entry.second.name, "pupil");
+        maps.flatten_light = maps.eye_layer != 0 || eye_name;
+        maps.face_decal = eye_name && maps.eye_layer == 0 && !maps.additive;
+        if (maps.eye_layer != 0) {
+            maps.has_alpha = true;
+        }
+        // Untextured jelly shells (Solosis) use baseColor alpha < 1.
+        if (entry.second.opacity < 0.999f) {
+            maps.has_alpha = true;
+        }
+        // Alpha-tested eye sheets keep opaque-pass ordering so brow/mane drawn
+        // later can occlude them — matching XY Eye1 in the opaque body pass.
+        if (maps.alpha_clip) {
+            maps.has_alpha = false;
         }
         report.additive = maps.additive;
-        report.has_alpha = maps.has_alpha;
+        report.has_alpha = maps.has_alpha || maps.alpha_clip || maps.eye_layer != 0;
         gpu_mesh->reports.push_back(report);
         gpu_mesh->material_names.push_back(entry.first);
         gpu_mesh->textures.push_back(maps);
         gpu_mesh->diffuse_colors.push_back(entry.second.diffuse);
+        gpu_mesh->diffuse_opacity.push_back(entry.second.opacity);
     }
 
-    // Effect meshes are sized for the moves that trigger them, not for the idle
-    // pose: Weezing's "FireSten" gas volume is a sphere that swallows the whole
-    // Pokemon. Anything that big is hidden, while localised effects are kept.
+    // Effect meshes in the XY rips are sized for the moves that trigger them,
+    // not for the idle pose: Weezing's "FireSten" gas volume is a sphere that
+    // swallows the whole Pokemon. Anything that big is hidden there.
+    //
+    // poke-3D is exempt: its effect geometry is part of the silhouette rather
+    // than a move volume, and Rapidash's mane and tail are a single fire sheet
+    // taller than the body it is attached to.
+    const bool glb_source = isGlbPath(mesh.source_path);
     float body_diagonal = 0.f;
     for (std::size_t i = 0; i < material_order.size(); ++i) {
         if (!gpu_mesh->textures[i].additive) {
@@ -560,7 +667,7 @@ bool GLRenderer::uploadMesh(
             }
         }
     }
-    for (std::size_t i = 0; i < material_order.size(); ++i) {
+    for (std::size_t i = 0; i < material_order.size() && !glb_source; ++i) {
         if (!gpu_mesh->textures[i].additive || body_diagonal <= 0.f) {
             continue;
         }
@@ -615,6 +722,11 @@ bool GLRenderer::uploadMesh(
                     texcoord = mesh.texcoords[texcoord_index];
                 }
 
+                cv::Vec3f color(1.f, 1.f, 1.f);
+                if (vertex_index >= 0 && vertex_index < static_cast<int>(mesh.colors.size())) {
+                    color = mesh.colors[vertex_index];
+                }
+
                 GpuVertex vertex{};
                 vertex.position[0] = position.x;
                 vertex.position[1] = position.y;
@@ -624,6 +736,9 @@ bool GLRenderer::uploadMesh(
                 vertex.normal[2] = normal.z;
                 vertex.texcoord[0] = texcoord.x;
                 vertex.texcoord[1] = 1.0f - texcoord.y;
+                vertex.color[0] = color[0];
+                vertex.color[1] = color[1];
+                vertex.color[2] = color[2];
 
                 vertices.push_back(vertex);
                 indices.push_back(static_cast<unsigned int>(vertices.size() - 1));
@@ -635,22 +750,31 @@ bool GLRenderer::uploadMesh(
             gpu_mesh->draw_ranges.push_back(range);
         }
     }
-    // Opaque first, then alpha cutouts (iris) so eyes underneath stay visible,
-    // and additive glows last since they read the finished colour behind them.
-    auto layer = [&](const GpuDrawRange& range) {
+    // Opaque first, then alpha (sclera → iris → lid), then additive glows.
+    auto sort_key = [&](const GpuDrawRange& range) {
         if (range.material_index >= gpu_mesh->textures.size()) {
             return 0;
         }
         const GpuMaterialTextures& maps = gpu_mesh->textures[range.material_index];
         if (maps.additive) {
-            return 2;
+            return 300;
         }
-        return maps.has_alpha ? 1 : 0;
+        if (maps.has_alpha || maps.eye_layer != 0) {
+            const int sub = maps.eye_layer == 0 ? 0 : maps.eye_layer;
+            return 100 + sub;
+        }
+        // Still opaque, but after the head it is painted on.
+        if (maps.face_decal) {
+            return 50;
+        }
+        return 0;
     };
     std::stable_sort(
         gpu_mesh->draw_ranges.begin(),
         gpu_mesh->draw_ranges.end(),
-        [&](const GpuDrawRange& a, const GpuDrawRange& b) { return layer(a) < layer(b); });
+        [&](const GpuDrawRange& a, const GpuDrawRange& b) {
+            return sort_key(a) < sort_key(b);
+        });
 
     if (vertices.empty() || indices.empty()) {
         delete gpu_mesh;
@@ -677,6 +801,9 @@ bool GLRenderer::uploadMesh(
     glEnableVertexAttribArray(2);
     glVertexAttribPointer(
         2, 2, GL_FLOAT, GL_FALSE, sizeof(GpuVertex), reinterpret_cast<void*>(offsetof(GpuVertex, texcoord)));
+    glEnableVertexAttribArray(3);
+    glVertexAttribPointer(
+        3, 3, GL_FLOAT, GL_FALSE, sizeof(GpuVertex), reinterpret_cast<void*>(offsetof(GpuVertex, color)));
 
     glBindVertexArray(0);
     gpu_mesh_ = gpu_mesh;
@@ -741,12 +868,17 @@ bool GLRenderer::renderOverlay(
         }
 
         cv::Vec3f diffuse(0.8f, 0.8f, 0.8f);
+        float opacity = 1.f;
         if (range.material_index < gpu_mesh->diffuse_colors.size()) {
             diffuse = gpu_mesh->diffuse_colors[range.material_index];
+        }
+        if (range.material_index < gpu_mesh->diffuse_opacity.size()) {
+            opacity = gpu_mesh->diffuse_opacity[range.material_index];
         }
         glUniform3f(
             glGetUniformLocation(shader_program_, "uDiffuse"),
             diffuse[0], diffuse[1], diffuse[2]);
+        glUniform1f(glGetUniformLocation(shader_program_, "uOpacity"), opacity);
 
         glUniform1i(glGetUniformLocation(shader_program_, "uUseDiffuseMap"), maps.diffuse != 0 ? 1 : 0);
         glUniform1i(glGetUniformLocation(shader_program_, "uUseNormalMap"), maps.normal != 0 ? 1 : 0);
@@ -754,14 +886,52 @@ bool GLRenderer::renderOverlay(
         glUniform1i(glGetUniformLocation(shader_program_, "uUseColor2Map"), maps.color2 != 0 ? 1 : 0);
         glUniform1i(glGetUniformLocation(shader_program_, "uUseAlphaMask"), maps.alpha_mask != 0 ? 1 : 0);
         glUniform1i(glGetUniformLocation(shader_program_, "uAdditive"), maps.additive ? 1 : 0);
+        glUniform1i(glGetUniformLocation(shader_program_, "uFlattenLight"), maps.flatten_light ? 1 : 0);
+        // Cutouts and untextured translucent shells (Solosis) need texture/factor
+        // alpha; film-opacity atlases must not.
+        const bool use_tex_alpha =
+            maps.has_alpha || maps.alpha_clip || maps.eye_layer != 0 ||
+            (!maps.diffuse && opacity < 0.999f);
+        glUniform1i(glGetUniformLocation(shader_program_, "uUseTextureAlpha"),
+                    use_tex_alpha ? 1 : 0);
         glUniform3f(glGetUniformLocation(shader_program_, "uEffectTint"),
                     maps.tint[0], maps.tint[1], maps.tint[2]);
 
         // Premultiplied additive glow must not occlude anything behind it.
+        // poke-3D eyes: sclera/iris write colour only; lids write depth last so
+        // they cover the pupil without a camera-ward mesh bias.
         if (maps.additive) {
+            glDisable(GL_POLYGON_OFFSET_FILL);
+            glDepthFunc(GL_LESS);
             glBlendFunc(GL_ONE, GL_ONE);
             glDepthMask(GL_FALSE);
+        } else if (maps.eye_layer == 1 || maps.eye_layer == 2) {
+            glDisable(GL_POLYGON_OFFSET_FILL);
+            glDepthFunc(GL_LEQUAL);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            glDepthMask(GL_FALSE);
+        } else if (maps.eye_layer == 3) {
+            glDisable(GL_POLYGON_OFFSET_FILL);
+            glDepthFunc(GL_LEQUAL);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            glDepthMask(GL_TRUE);
+        } else if (maps.alpha_clip) {
+            glEnable(GL_POLYGON_OFFSET_FILL);
+            glPolygonOffset(2.f, 8.f);
+            glDepthFunc(GL_LESS);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            glDepthMask(GL_TRUE);
+        } else if (maps.face_decal) {
+            // Bias toward the camera so the quad wins against the skull it is
+            // coplanar with instead of z-fighting or disappearing entirely.
+            glEnable(GL_POLYGON_OFFSET_FILL);
+            glPolygonOffset(-2.f, -8.f);
+            glDepthFunc(GL_LEQUAL);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            glDepthMask(GL_TRUE);
         } else {
+            glDisable(GL_POLYGON_OFFSET_FILL);
+            glDepthFunc(GL_LESS);
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
             glDepthMask(GL_TRUE);
         }
@@ -779,6 +949,8 @@ bool GLRenderer::renderOverlay(
             reinterpret_cast<void*>(static_cast<std::uintptr_t>(range.first_index) * sizeof(unsigned int)));
     }
     // Depth writes must be back on or the next frame's depth clear is a no-op.
+    glDisable(GL_POLYGON_OFFSET_FILL);
+    glDepthFunc(GL_LESS);
     glDepthMask(GL_TRUE);
     glBindVertexArray(0);
 

@@ -6,20 +6,26 @@
 // failed to decode, UVs pointing at empty atlas space) shows up as a FAIL here
 // instead of as a missing limb in the AR view.
 //
-// Usage: ./validate_models [model_name ...] [--pokemon NAME]...
-//   --pokemon NAME  download NAME from The Models Resource and validate it too
+// Usage: ./validate_models [model_name ...] [--pokemon NAME]... [--models SOURCE]
+//          [--scale MULT] [--scale-y Y]
+//   --pokemon NAME  download NAME and validate it too
+//   --models models-resource|poke-3D  (default models-resource)
+//   --scale / --scale-y  same as ar_card (Pokédex log-scale)
 // Writes a montage per model to build/validation/ and exits non-zero on failure.
 
 #include "gl_renderer.hpp"
 #include "model_download.hpp"
 #include "model_library.hpp"
 #include "obj_loader.hpp"
+#include "poke3d_download.hpp"
+#include "pokemon_heights.hpp"
 
 #include <opencv2/opencv.hpp>
 
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <cstring>
 #include <filesystem>
 #include <string>
 #include <vector>
@@ -101,23 +107,50 @@ struct Problem {
 int main(int argc, char** argv) {
     std::vector<std::string> wanted;
     std::vector<std::string> to_download;
+    std::string models_source = "models-resource";
+    float scale_multiplier = kDefaultScaleMultiplier;
+    float scale_y = kDefaultScaleY;
     for (int i = 1; i < argc; i++) {
         if (std::string(argv[i]) == "--pokemon" && i + 1 < argc) {
             to_download.push_back(argv[++i]);
+        } else if (std::string(argv[i]) == "--models" && i + 1 < argc) {
+            models_source = argv[++i];
+            if (models_source != "models-resource" && models_source != "poke-3D") {
+                printf("--models must be \"models-resource\" or \"poke-3D\"\n");
+                return 2;
+            }
+        } else if (std::string(argv[i]) == "--scale" && i + 1 < argc) {
+            scale_multiplier = static_cast<float>(std::atof(argv[++i]));
+            if (!(scale_multiplier > 0.f)) {
+                printf("--scale must be a positive number\n");
+                return 2;
+            }
+        } else if (std::string(argv[i]) == "--scale-y" && i + 1 < argc) {
+            scale_y = static_cast<float>(std::atof(argv[++i]));
+            if (!(scale_y > 0.f)) {
+                printf("--scale-y must be a positive number\n");
+                return 2;
+            }
         } else {
             wanted.push_back(argv[i]);
         }
     }
 
-    std::vector<ModelEntry> library =
-        discoverModels({"../data/assets", "data/assets", "../../data/assets"});
+    const bool use_poke3d = (models_source == "poke-3D");
+    std::vector<ModelEntry> library;
+    if (!use_poke3d) {
+        library = discoverModels({"../data/assets", "data/assets", "../../data/assets"});
+    }
 
     ModelDownloader downloader;
+    Poke3dDownloader poke3d_downloader;
     std::vector<Problem> problems;
     for (const std::string& name : to_download) {
         std::vector<ModelEntry> fetched;
         std::string error;
-        if (downloader.download(name, fetched, error)) {
+        const bool ok = use_poke3d ? poke3d_downloader.download(name, fetched, error)
+                                   : downloader.download(name, fetched, error);
+        if (ok) {
             for (ModelEntry& entry : fetched) {
                 printf("downloaded %s\n", entry.name.c_str());
                 wanted.push_back(entry.name);
@@ -130,7 +163,11 @@ int main(int argc, char** argv) {
     }
 
     if (library.empty()) {
-        printf("No models discovered under data/assets\n");
+        if (use_poke3d) {
+            printf("No poke-3D models — pass --pokemon NAME\n");
+        } else {
+            printf("No models discovered under data/assets\n");
+        }
         return 2;
     }
 
@@ -179,17 +216,42 @@ int main(int argc, char** argv) {
         }
 
         const MeshOrientation up = detectOrientation(mesh);
-        printf("  native bbox x[%.2f,%.2f] y[%.2f,%.2f] z[%.2f,%.2f]  up=%c%c native_h=%.2f\n",
+        printf("  native bbox x[%.2f,%.2f] y[%.2f,%.2f] z[%.2f,%.2f]  "
+               "up=(%.2f,%.2f,%.2f) ~%c%c native_h=%.2f\n",
                mesh.min_bounds.x, mesh.max_bounds.x,
                mesh.min_bounds.y, mesh.max_bounds.y,
                mesh.min_bounds.z, mesh.max_bounds.z,
+               up.up[0], up.up[1], up.up[2],
                up.sign > 0 ? '+' : '-', up.axis == 1 ? 'Y' : 'Z', up.height);
 
-        const ModelPlacement placement = placeMeshOnCard(mesh, kCardW, kCardH);
-        printf("  height on card = %.2f in (XY battle mesh scale)\n", placement.height_inches);
-        // Diglett ~0.5, Charizard ~4.4, Onix ~5 after unit fold. Far outside that
-        // band means the up-axis or the rip-family conversion went wrong.
-        if (placement.height_inches < 0.2f || placement.height_inches > 20.f) {
+        ModelEntry keyed = entry;
+        resolveModelDex(keyed);
+        ScaleParams scale_params;
+        scale_params.scale_multiplier = scale_multiplier;
+        scale_params.y = scale_y;
+        float height_m = -1.f;
+        if (keyed.dex > 0) {
+            height_m = PokemonHeights::heightMetresByDex(keyed.dex);
+        }
+        if (!(height_m > 0.f)) {
+            height_m = PokemonHeights::heightMetresByName(keyed.name);
+        }
+        if (!(height_m > 0.f)) {
+            printf("  WARN: no Pokédex height for %s (dex %d); using %.1f m\n",
+                   keyed.name.c_str(), keyed.dex, kDefaultHeightM);
+            height_m = kDefaultHeightM;
+        }
+        scale_params.height_m = height_m;
+
+        const ModelPlacement placement = placeMeshOnCard(mesh, kCardW, kCardH, scale_params);
+        printf("  pokedex %.2f m → target %.2f in → height on card = %.2f in "
+               "(scale=%.2f y=%.2f dex=%d)\n",
+               placement.height_m, placement.target_inches, placement.height_inches,
+               scale_multiplier, scale_y, keyed.dex);
+        // Log-scale targets sit in [kMinHeightInches, kMaxHeightInches]; a miss
+        // usually means orientation failed and native_h was near zero.
+        if (placement.height_inches < kMinHeightInches * 0.9f ||
+            placement.height_inches > kMaxHeightInches * 1.1f) {
             printf("  FAIL: implausible height on card\n");
             problems.push_back({entry.name, "implausible height on card (" +
                                                 std::to_string(placement.height_inches) + " in)"});
