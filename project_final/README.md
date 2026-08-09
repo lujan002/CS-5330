@@ -33,8 +33,9 @@ for the release tree next to the course projects
 Arguments:
 - `--model pyramid|pokemon` — which overlay to draw (default `pokemon`)
 - `--models models-resource|poke-3D` — where 3D meshes come from (default `models-resource`).
-  `models-resource` uses bundled XY DAEs under `data/assets/` plus The Models Resource
-  downloads. `poke-3D` fetches Assimp-prepared GLBs from
+  Both sources download on demand into `/dev/shm` for this session only.
+  `models-resource` scrapes [The Models Resource](https://www.models-resource.com)
+  (Pokemon X/Y DAEs). `poke-3D` fetches Assimp-prepared GLBs from
   [Pokemon-3D-api/assets](https://github.com/Pokemon-3D-api/assets) (see below)
 - `--scale MULT` — global multiplier on Pokédex log-scale height, default `1.0` (see Scaling)
 - `--scale-y Y` — exponent in `log1p(height_m^Y)`, default `0.85` (lower = flatter sizes)
@@ -47,17 +48,18 @@ Arguments:
 Controls:
 - `q` — quit
 - `p` — load camera intrinsics and toggle pose/axes on the card
-- `m` — next model. With Pokemon overlay this cycles every model found under
-  `data/assets/` plus anything downloaded via `--pokemon`, then back to off;
-  with `--model pyramid` it just toggles.
+- `m` — next model. With Pokemon overlay this cycles anything downloaded via
+  `--pokemon`, then back to off; with `--model pyramid` it just toggles. In
+  `--match on` mode it only toggles the dex-driven overlay on/off.
 - `s` — print the 4 ordered card corners (TL TR BR BL)
 - `c` — print the ranked gallery candidates behind the displayed match
 
 ## Models
 
 - `pyramid` — project4-style colored wireframe pyramid via `projectPoints`
-- `pokemon` — every model under `data/assets/` is discovered at startup and drawn with
-  the OpenGL overlay renderer. The current model's name is drawn in the corner.
+- `pokemon` — meshes downloaded for this session (`--pokemon` and/or `--match`)
+  and drawn with the OpenGL overlay renderer. The current model's name is drawn
+  in the corner.
 
 When several exports of the same model sit side by side, the preference order is
 `*_ColladaMax.DAE` → `*_OpenCollada.DAE` → plain `.dae` → `.obj`. The XY `.FBX` files are
@@ -207,9 +209,8 @@ npm install
 
 `--pokemon NAME` resolves the national dex via [PokeAPI](https://pokeapi.co/), then
 fetches that dex's GLB (with the same form heuristics as match mode). With
-`--match on`, the matched card's dex **and name** drive the download (bundled XY
-`data/assets` are skipped). Scratch files live in `/dev/shm` and are deleted on
-exit, same as Models Resource.
+`--match on`, the matched card's dex **and name** drive the download. Scratch
+files live in `/dev/shm` and are deleted on exit, same as Models Resource.
 
 Smoke-test a single species without the camera:
 
@@ -309,11 +310,10 @@ card is a Pokemon), TCGdex id, and cosine score.
 
 When a Pokemon card is identified, the 3D overlay is driven from that national
 dex (and card name, for poke-3D forms). With the default `--models models-resource`,
-local `data/assets` folders tagged `#NNNN` are tried first, otherwise the model
-is fetched from The Models Resource for this session only. With `--models poke-3D`,
-the overlay comes from the Pokemon-3D-api GLB for that dex/form. Bundled
-`--model pokemon` cycling and `--pokemon NAME` are skipped in match mode; `m`
-only toggles the overlay on and off. Trainer/Energy cards (no dex) clear the mesh.
+the model is fetched from The Models Resource for this session only. With
+`--models poke-3D`, the overlay comes from the Pokemon-3D-api GLB for that
+dex/form. Manual `--pokemon NAME` cycling is skipped in match mode; `m` only
+toggles the overlay on and off. Trainer/Energy cards (no dex) clear the mesh.
 
 The homography only holds for the one plane it was fitted to, the card face.
 Fingers over a corner, a bent card, or a quad that has slipped onto the sleeve
@@ -333,7 +333,9 @@ about 3% of the gallery is reprint artwork that is pixel-identical across two
 sets, so the card *id* is genuinely ambiguous from the image while the card name
 still comes out right.
 
-The model and the index are built offline and are not in the repo:
+Inference artifacts under `data/card_match/inference/` ship with the repo so
+`--match on` works without retraining. Rebuild them (and the gitignored TCG
+download under `data/tcg/`) with:
 
 ```bash
 python3 -m card_match.download_tcgdex --with-dex   # ~21.8k images, ~1.7 GB
@@ -342,9 +344,10 @@ python3 -m card_match.export_onnx
 python3 -m card_match.embed_gallery
 ```
 
-`ar_card` then picks up `data/card_match/embedder.onnx` and
-`data/card_match/gallery.bin` on its own. Without them `--match on` prints why it
-could not start and the rest of the app runs unchanged.
+`ar_card` then picks up `data/card_match/inference/embedder.onnx` and
+`data/card_match/inference/gallery.bin` on its own (plus `orient.onnx` /
+`cardness.onnx` when present). Without the embedder/gallery, `--match on`
+prints why it could not start and the rest of the app runs unchanged.
 
 See [card_match/README.md](card_match/README.md) for the architecture, the
 augmentation that covers the scan-to-webcam gap, and the preprocessing contract
@@ -363,16 +366,17 @@ preprocessing: the card must come back as itself at `1.0000`.
 
 ## Validating assets
 
-`validate_models` loads every discovered model, reports what actually reached the GPU, and
-renders each material on its own to count the pixels it contributes. Geometry that imports
-but draws nothing is the failure mode that hid Venusaur's trunk, so it is reported as a
-failure rather than left for you to spot in the AR view.
+`validate_models` downloads the requested species, reports what actually reached
+the GPU, and renders each material in isolation to count the pixels it
+contributes. Geometry that imports but draws nothing is the failure mode that
+hid Venusaur's trunk, so it is reported as a failure rather than left for you to
+spot in the AR view.
 
 ```bash
 cd build
-./validate_models                      # every model under data/assets
-./validate_models Charizard Venusaur   # just these
-./validate_models --pokemon Gengar     # download and validate too
+./validate_models --pokemon Gengar
+./validate_models --pokemon Charizard --pokemon Venusaur
+./validate_models --models poke-3D --pokemon Charizard
 ```
 
 Per model it checks that the mesh loads and has triangles, that every vertex has a UV, that

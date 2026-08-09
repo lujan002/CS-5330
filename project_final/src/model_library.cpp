@@ -166,61 +166,6 @@ std::vector<ModelEntry> discoverModels(const std::vector<std::string>& roots) {
     return models;
 }
 
-ModelEntry findLocalModelByDex(int dex, const std::vector<std::string>& roots) {
-    ModelEntry empty;
-    if (dex <= 0) {
-        return empty;
-    }
-
-    // Folder names look like "... - #0006 Charizard". Accept any zero-padding.
-    char exact[16];
-    char loose[16];
-    std::snprintf(exact, sizeof(exact), "#%04d", dex);
-    std::snprintf(loose, sizeof(loose), "#%d", dex);
-
-    for (const std::string& root : roots) {
-        std::error_code ec;
-        if (!fs::exists(root, ec) || !fs::is_directory(root, ec)) {
-            continue;
-        }
-        for (fs::recursive_directory_iterator it(
-                 root, fs::directory_options::skip_permission_denied, ec),
-             end;
-             it != end && !ec; it.increment(ec)) {
-            if (!it->is_directory(ec)) {
-                continue;
-            }
-            const std::string folder = it->path().filename().string();
-            const std::size_t at = folder.find('#');
-            if (at == std::string::npos) {
-                continue;
-            }
-            // Parse the digits after '#' so "#0006" and "#6" both match.
-            std::size_t digits = at + 1;
-            while (digits < folder.size() &&
-                   std::isdigit(static_cast<unsigned char>(folder[digits]))) {
-                digits++;
-            }
-            if (digits == at + 1) {
-                continue;
-            }
-            const int folder_dex = std::stoi(folder.substr(at + 1, digits - (at + 1)));
-            if (folder_dex != dex) {
-                continue;
-            }
-            (void)exact;
-            (void)loose;
-            std::vector<ModelEntry> found = discoverModels({it->path().string()});
-            if (!found.empty()) {
-                ModelEntry entry = found.front();
-                entry.dex = dex;
-                return entry;
-            }
-        }
-    }
-    return empty;
-}
-
 void resolveModelDex(ModelEntry& entry) {
     if (entry.dex > 0) {
         return;

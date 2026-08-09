@@ -446,7 +446,7 @@ bool ModelDownloader::download(
     }
 
     // Reuse the normal discovery rules so downloaded archives get the same
-    // ColladaMax preference and Mega filtering as the bundled assets.
+    // ColladaMax preference and Mega filtering as other Models Resource rips.
     out_models = discoverModels({scratch.string()});
     if (out_models.empty()) {
         error = "no loadable model found inside the " + match->clean + " archive";

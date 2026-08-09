@@ -1,5 +1,5 @@
 # Offline card-matching pipeline. The C++ app needs none of this at runtime,
-# only the embedder.onnx and gallery.bin these scripts produce.
+# only the files under data/card_match/inference/ these scripts produce.
 #
 # Install torch/torchvision from https://pytorch.org for your CUDA version
 # first; the pins below are only lower bounds that were verified to work.

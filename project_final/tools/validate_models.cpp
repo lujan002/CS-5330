@@ -6,9 +6,9 @@
 // failed to decode, UVs pointing at empty atlas space) shows up as a FAIL here
 // instead of as a missing limb in the AR view.
 //
-// Usage: ./validate_models [model_name ...] [--pokemon NAME]... [--models SOURCE]
+// Usage: ./validate_models --pokemon NAME [--pokemon NAME]... [--models SOURCE]
 //          [--scale MULT] [--scale-y Y]
-//   --pokemon NAME  download NAME and validate it too
+//   --pokemon NAME  download NAME and validate it
 //   --models models-resource|poke-3D  (default models-resource)
 //   --scale / --scale-y  same as ar_card (Pokédex log-scale)
 // Writes a montage per model to build/validation/ and exits non-zero on failure.
@@ -138,9 +138,6 @@ int main(int argc, char** argv) {
 
     const bool use_poke3d = (models_source == "poke-3D");
     std::vector<ModelEntry> library;
-    if (!use_poke3d) {
-        library = discoverModels({"../data/assets", "data/assets", "../../data/assets"});
-    }
 
     ModelDownloader downloader;
     Poke3dDownloader poke3d_downloader;
@@ -163,11 +160,7 @@ int main(int argc, char** argv) {
     }
 
     if (library.empty()) {
-        if (use_poke3d) {
-            printf("No poke-3D models — pass --pokemon NAME\n");
-        } else {
-            printf("No models discovered under data/assets\n");
-        }
+        printf("No models — pass --pokemon NAME (source: %s)\n", models_source.c_str());
         return 2;
     }
 

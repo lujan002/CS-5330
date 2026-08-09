@@ -15,9 +15,9 @@ import numpy as np
 import torch
 
 from .common import (
-    ARTIFACT_DIR,
     CHECKPOINT_PATH,
     EMBED_DIM,
+    INFERENCE_DIR,
     INPUT_H,
     INPUT_W,
     ONNX_PATH,
@@ -42,7 +42,7 @@ def main() -> int:
     embedder.load_state_dict(checkpoint["embedder"])
     embedder.eval()
 
-    ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
+    INFERENCE_DIR.mkdir(parents=True, exist_ok=True)
     example = torch.randn(1, 3, INPUT_H, INPUT_W)
 
     torch.onnx.export(

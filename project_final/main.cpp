@@ -1317,7 +1317,7 @@ int main(int argc, char* argv[]) {
         "              poke-3D depending on --models)\n"
         "  --match     identify the card against the TCG gallery (default off).\n"
         "              Drives the 3D overlay from the matched national dex;\n"
-        "              skips the bundled model cycle. Needs card_match artifacts\n"
+        "              skips the --pokemon model cycle. Needs card_match artifacts\n"
         "  --freeze-quad  after the locked quad matches, hold it / KLT and do\n"
         "              not probe alternatives (default on). off = keep hunting\n"
         "              higher-area quads that match. Still hunts while identifying\n"
@@ -1325,11 +1325,11 @@ int main(int argc, char* argv[]) {
         "              (off-screen or occluded outliers are extrapolated from the\n"
         "              live anchors; redetect only quads that share those anchors).\n"
         "              Default off = require all 4 on-screen\n"
-        "  --embedder  embedder.onnx path (default data/card_match/embedder.onnx)\n"
-        "  --gallery   gallery.bin path (default data/card_match/gallery.bin)\n"
-        "  --orient    orient.onnx path (default data/card_match/orient.onnx).\n"
+        "  --embedder  embedder.onnx path (default data/card_match/inference/embedder.onnx)\n"
+        "  --gallery   gallery.bin path (default data/card_match/inference/gallery.bin)\n"
+        "  --orient    orient.onnx path (default data/card_match/inference/orient.onnx).\n"
         "              Upright vs 180; falls back to Canny if missing\n"
-        "  --cardness  cardness.onnx path (default data/card_match/cardness.onnx).\n"
+        "  --cardness  cardness.onnx path (default data/card_match/inference/cardness.onnx).\n"
         "              Full-card vs panel gate before matching; optional\n";
 
     std::string model_choice = "pokemon";
@@ -1474,15 +1474,8 @@ int main(int argc, char* argv[]) {
     // deleted when this goes out of scope at the end of main.
     ModelDownloader downloader;
     Poke3dDownloader poke3d_downloader;
-    const std::vector<std::string> asset_roots = {
-        "../data/assets", "data/assets", "../../data/assets"};
 
     if (use_pokemon && !want_match) {
-        // Bundled XY DAEs only apply to the Models Resource path.
-        if (!use_poke3d) {
-            model_library = discoverModels(asset_roots);
-        }
-
         for (const std::string& wanted : requested_downloads) {
             std::vector<ModelEntry> fetched;
             std::string error;
@@ -1507,10 +1500,8 @@ int main(int argc, char* argv[]) {
             printf("  [%zu] %s\n", i, model_library[i].name.c_str());
         }
         if (model_library.empty()) {
-            printf("No models found — 'm' will fall back to the pyramid\n");
-            if (use_poke3d) {
-                printf("  tip: pass --pokemon NAME or use --match on with poke-3D\n");
-            }
+            printf("No models downloaded — 'm' will fall back to the pyramid\n");
+            printf("  tip: pass --pokemon NAME, or use --match on for dex-driven downloads\n");
         }
     } else if (!requested_downloads.empty() && !want_match) {
         printf("--pokemon needs --model pokemon; ignoring the requested downloads\n");
@@ -1524,10 +1515,10 @@ int main(int argc, char* argv[]) {
     bool match_mode = false;
     if (want_match) {
         if (embedder_path.empty()) {
-            embedder_path = resolveDataPath("data/card_match/embedder.onnx");
+            embedder_path = resolveDataPath("data/card_match/inference/embedder.onnx");
         }
         if (gallery_path.empty()) {
-            gallery_path = resolveDataPath("data/card_match/gallery.bin");
+            gallery_path = resolveDataPath("data/card_match/inference/gallery.bin");
         }
         std::string error;
         if (card_matcher.init(embedder_path, gallery_path, error)) {
@@ -1556,7 +1547,7 @@ int main(int argc, char* argv[]) {
     // Optional learned upright / 180 classifier (same crop as the matcher).
     OrientationClassifier orient_classifier;
     if (orient_path.empty()) {
-        orient_path = resolveDataPath("data/card_match/orient.onnx");
+        orient_path = resolveDataPath("data/card_match/inference/orient.onnx");
     }
     {
         std::string error;
@@ -1571,7 +1562,7 @@ int main(int argc, char* argv[]) {
     // Optional full-card vs panel gate before embedding / matching.
     CardnessClassifier cardness_classifier;
     if (cardness_path.empty()) {
-        cardness_path = resolveDataPath("data/card_match/cardness.onnx");
+        cardness_path = resolveDataPath("data/card_match/inference/cardness.onnx");
     }
     {
         std::string error;
@@ -1759,8 +1750,9 @@ int main(int argc, char* argv[]) {
         cv::Point3f(1.25f, 1.75f, -2.0f),
     };
 
-    // OpenGL Pokemon models. Without --match they come from data/assets and are
-    // cycled with 'm'. With --match they are resolved from the card's national dex.
+    // OpenGL Pokemon models. Without --match they come from --pokemon downloads
+    // and are cycled with 'm'. With --match they are resolved from the card's
+    // national dex (fetched on demand into /dev/shm).
     GLRenderer gl_renderer;
     ObjMesh pokemon_mesh;
     std::vector<cv::Point3f> pokemon_vertices;
@@ -1772,7 +1764,7 @@ int main(int argc, char* argv[]) {
     std::string current_model_name;
     int loaded_dex = -1;
     std::string loaded_model_key;  // dex + form, e.g. "479:heat-rotom"
-    // Paths stay valid for the process lifetime (bundled assets or /dev/shm).
+    // Paths stay valid for the process lifetime (/dev/shm scratch dirs).
     std::map<std::string, ModelEntry> model_cache;
 
     auto clearPokemonModel = [&]() {
@@ -1852,9 +1844,9 @@ int main(int argc, char* argv[]) {
     };
 
     // Resolve a national dex (+ optional card name for forms) to a mesh.
-    // Models Resource: local assets first, then scrape. poke-3D: fetch the
-    // Pokemon-3D-api GLB, preferring form variants when the card name implies
-    // one (Heat Rotom, Alolan Raichu, ...). Cached per dex+form key.
+    // Models Resource: scrape + download. poke-3D: fetch the Pokemon-3D-api GLB,
+    // preferring form variants when the card name implies one (Heat Rotom,
+    // Alolan Raichu, ...). Cached per dex+form key.
     auto modelCacheKey = [](int dex, const std::string& card_name) {
         std::string key = std::to_string(dex);
         if (!card_name.empty()) {
@@ -1903,20 +1895,15 @@ int main(int argc, char* argv[]) {
             entry = fetched.front();
             model_cache[cache_key] = entry;
         } else {
-            entry = findLocalModelByDex(dex, asset_roots);
-            if (entry.path.empty()) {
-                std::vector<ModelEntry> fetched;
-                std::string error;
-                printf("Fetching model for dex #%d...\n", dex);
-                if (!downloader.downloadByDex(dex, fetched, error) || fetched.empty()) {
-                    printf("No model for dex #%d: %s\n", dex, error.c_str());
-                    clearPokemonModel();
-                    return false;
-                }
-                entry = fetched.front();
-            } else {
-                printf("Using bundled model for dex #%d (%s)\n", dex, entry.name.c_str());
+            std::vector<ModelEntry> fetched;
+            std::string error;
+            printf("Fetching model for dex #%d...\n", dex);
+            if (!downloader.downloadByDex(dex, fetched, error) || fetched.empty()) {
+                printf("No model for dex #%d: %s\n", dex, error.c_str());
+                clearPokemonModel();
+                return false;
             }
+            entry = fetched.front();
             model_cache[cache_key] = entry;
         }
 

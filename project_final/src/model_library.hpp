@@ -15,11 +15,8 @@ struct ModelEntry {
 
 // Recursively scan roots for loadable models. Collada "*_ColladaMax.DAE" is
 // preferred over the "*_OpenCollada.DAE" duplicates; plain .obj is also picked up.
+// Used after unpacking a downloaded archive into a scratch directory.
 std::vector<ModelEntry> discoverModels(const std::vector<std::string>& roots);
-
-// Look for a bundled asset folder tagged with this national dex (e.g. "#0006
-// Charizard"). Returns an empty path when nothing local matches.
-ModelEntry findLocalModelByDex(int dex, const std::vector<std::string>& roots);
 
 // Fill entry.dex from a #NNNN folder in the path, then from the height table by
 // name. No-op when dex is already set.

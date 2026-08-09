@@ -14,9 +14,9 @@ import numpy as np
 import torch
 
 from .common import (
-    ARTIFACT_DIR,
     CARDNESS_CHECKPOINT_PATH,
     CARDNESS_ONNX_PATH,
+    INFERENCE_DIR,
     INPUT_H,
     INPUT_W,
 )
@@ -40,7 +40,7 @@ def main() -> int:
     model.load_state_dict(state)
     model.eval()
     best_epoch = checkpoint.get("best_epoch", checkpoint.get("epoch", "?"))
-    ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
+    INFERENCE_DIR.mkdir(parents=True, exist_ok=True)
     example = torch.randn(1, 3, INPUT_H, INPUT_W)
 
     torch.onnx.export(

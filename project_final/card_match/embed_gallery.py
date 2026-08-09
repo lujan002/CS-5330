@@ -27,6 +27,7 @@ from .common import (
     GALLERY_IDS_PATH,
     GALLERY_NPY_PATH,
     IMAGE_DIR,
+    INFERENCE_DIR,
     ONNX_PATH,
     load_meta,
     write_gallery_bin,
@@ -98,6 +99,7 @@ def main() -> int:
     embeddings = embeddings / np.maximum(norms, 1e-12)
 
     ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
+    INFERENCE_DIR.mkdir(parents=True, exist_ok=True)
     np.save(GALLERY_NPY_PATH, embeddings)
     write_gallery_bin(GALLERY_BIN_PATH, embeddings, kept)
     with GALLERY_IDS_PATH.open("w", encoding="utf-8") as handle:

@@ -14,7 +14,7 @@ import numpy as np
 import torch
 
 from .common import (
-    ARTIFACT_DIR,
+    INFERENCE_DIR,
     INPUT_H,
     INPUT_W,
     ORIENT_CHECKPOINT_PATH,
@@ -38,7 +38,7 @@ def main() -> int:
     model.load_state_dict(checkpoint["model"])
     model.eval()
 
-    ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
+    INFERENCE_DIR.mkdir(parents=True, exist_ok=True)
     example = torch.randn(1, 3, INPUT_H, INPUT_W)
 
     torch.onnx.export(

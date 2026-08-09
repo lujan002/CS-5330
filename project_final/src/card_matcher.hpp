@@ -1,8 +1,9 @@
 // Luke Jansen
 // Card identity lookup: rectified card crop -> nearest card in the TCG gallery.
 //
-// The ONNX graph and gallery.bin are produced by the offline card_match package;
-// see project_final/card_match/README.md. ONNX Runtime is hidden behind a pimpl
+// The ONNX graph and gallery.bin are produced by the offline card_match package
+// into data/card_match/inference/; see project_final/card_match/README.md.
+// ONNX Runtime is hidden behind a pimpl
 // so main.cpp does not need its headers.
 
 #ifndef CARD_MATCHER_HPP

@@ -15,8 +15,21 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <fstream>
 #include <string>
 #include <vector>
+
+static std::string resolveDataPath(const std::string& relative) {
+    const char* prefixes[] = {"", "../", "../../"};
+    for (const char* prefix : prefixes) {
+        std::string candidate = std::string(prefix) + relative;
+        std::ifstream probe(candidate, std::ios::binary);
+        if (probe.is_open()) {
+            return candidate;
+        }
+    }
+    return relative;
+}
 
 static bool parseCorners(const char* text, std::vector<cv::Point2f>& corners) {
     corners.clear();
@@ -50,8 +63,8 @@ int main(int argc, char* argv[]) {
         "Without --corners the whole image is treated as an already top-down card.\n";
 
     std::string image_path;
-    std::string embedder = "data/card_match/embedder.onnx";
-    std::string gallery = "data/card_match/gallery.bin";
+    std::string embedder;
+    std::string gallery;
     std::vector<cv::Point2f> corners;
     int top_k = 5;
 
@@ -78,6 +91,13 @@ int main(int argc, char* argv[]) {
     if (image_path.empty()) {
         printf(usage, argv[0]);
         return -1;
+    }
+
+    if (embedder.empty()) {
+        embedder = resolveDataPath("data/card_match/inference/embedder.onnx");
+    }
+    if (gallery.empty()) {
+        gallery = resolveDataPath("data/card_match/inference/gallery.bin");
     }
 
     cv::Mat image = cv::imread(image_path, cv::IMREAD_COLOR);

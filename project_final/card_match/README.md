@@ -2,8 +2,9 @@
 
 Offline pipeline that turns every English Pokemon TCG card into a searchable
 index, plus an ONNX model `ar_card` loads to identify the card under the camera.
-Nothing here runs at capture time: the C++ app only consumes `embedder.onnx` and
-`gallery.bin`.
+Nothing here runs at capture time: the C++ app only consumes the files under
+`data/card_match/inference/` (`embedder.onnx`, `gallery.bin`, and optionally
+`orient.onnx` / `cardness.onnx`).
 
 ## Why retrieval and not classification
 
@@ -43,7 +44,7 @@ Check them before trusting a training run:
 
 ```bash
 python3 -m card_match.preview_augment --cards 4 --views 7
-# writes data/card_match/augment_preview.png
+# writes data/card_match/artifacts/augment_preview.png
 ```
 
 Left column is the clean gallery scan; the rest are simulated queries. If they
@@ -108,7 +109,7 @@ logit_upside_down`.
 ```bash
 python3 -m card_match.train_orientation --epochs 10
 python3 -m card_match.export_orientation_onnx
-# then: ./build/ar_card --orient data/card_match/orient.onnx
+# then: ./build/ar_card --orient data/card_match/inference/orient.onnx
 ```
 
 If `orient.onnx` is missing, `ar_card` falls back to the old Canny score.
@@ -124,7 +125,7 @@ art-window panels that still share card aspect. Same 224×312 input as matching.
 ```bash
 python3 -m card_match.train_cardness --epochs 8
 python3 -m card_match.export_cardness_onnx
-# then: ./build/ar_card --match on --cardness data/card_match/cardness.onnx
+# then: ./build/ar_card --match on --cardness data/card_match/inference/cardness.onnx
 ```
 
 `ar_card` runs cardness on each oriented detect before embedding. Orientation
@@ -207,19 +208,20 @@ versus Mythical Island is an exact 1.0000 tie.
 
 ## Artifacts
 
-Written to `project_final/data/card_match/` (gitignored):
+Layout under `project_final/data/card_match/`:
 
-| File | Consumer |
-|---|---|
-| `embedder.pt` | training checkpoint, holds the ArcFace head for `--resume` |
-| `embedder.onnx` | `ar_card` |
-| `orient.pt` | orientation training checkpoint |
-| `orient.onnx` | `ar_card` upright / 180° classifier |
-| `cardness.pt` | cardness training checkpoint |
-| `cardness.onnx` | `ar_card` full-card / not-a-card gate before matching |
-| `gallery.bin` | `ar_card` — embeddings and card metadata in one file, no JSON parser needed |
-| `gallery_embeddings.npy` | eval and debugging |
-| `gallery_ids.json` | human-readable row order |
+| Path | Tracked? | Consumer |
+|---|---|---|
+| `inference/embedder.onnx` | yes (ship) | `ar_card` |
+| `inference/gallery.bin` | yes (ship) | `ar_card` — embeddings + card metadata |
+| `inference/orient.onnx` | yes (ship) | `ar_card` upright / 180° classifier |
+| `inference/cardness.onnx` | yes (ship) | `ar_card` full-card / not-a-card gate |
+| `artifacts/embedder.pt` | no | training checkpoint (`--resume`) |
+| `artifacts/orient.pt` | no | orientation training checkpoint |
+| `artifacts/cardness.pt` | no | cardness training checkpoint |
+| `artifacts/gallery_embeddings.npy` | no | eval and debugging |
+| `artifacts/gallery_ids.json` | no | human-readable row order |
+| `artifacts/augment_preview.png` etc. | no | training / preview sidecars |
 
 `gallery.bin` is little-endian: magic `PKCGAL01`, `int32 count`, `int32 dim`,
 `float32[count * dim]` row-major L2-normalized embeddings, then per row an

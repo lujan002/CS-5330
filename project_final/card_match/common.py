@@ -38,16 +38,23 @@ TCG_DIR = PROJECT_ROOT / "data" / "tcg" / "en"
 IMAGE_DIR = TCG_DIR / "images"
 META_PATH = TCG_DIR / "meta.jsonl"
 
-ARTIFACT_DIR = PROJECT_ROOT / "data" / "card_match"
+# data/card_match layout:
+#   inference/  — ONNX + gallery.bin consumed by ar_card (ship with the repo)
+#   artifacts/  — training checkpoints and debug sidecars (gitignored)
+CARD_MATCH_DIR = PROJECT_ROOT / "data" / "card_match"
+INFERENCE_DIR = CARD_MATCH_DIR / "inference"
+ARTIFACT_DIR = CARD_MATCH_DIR / "artifacts"
+
 CHECKPOINT_PATH = ARTIFACT_DIR / "embedder.pt"
-ONNX_PATH = ARTIFACT_DIR / "embedder.onnx"
 ORIENT_CHECKPOINT_PATH = ARTIFACT_DIR / "orient.pt"
-ORIENT_ONNX_PATH = ARTIFACT_DIR / "orient.onnx"
 CARDNESS_CHECKPOINT_PATH = ARTIFACT_DIR / "cardness.pt"
-CARDNESS_ONNX_PATH = ARTIFACT_DIR / "cardness.onnx"
 GALLERY_NPY_PATH = ARTIFACT_DIR / "gallery_embeddings.npy"
-GALLERY_BIN_PATH = ARTIFACT_DIR / "gallery.bin"
 GALLERY_IDS_PATH = ARTIFACT_DIR / "gallery_ids.json"
+
+ONNX_PATH = INFERENCE_DIR / "embedder.onnx"
+ORIENT_ONNX_PATH = INFERENCE_DIR / "orient.onnx"
+CARDNESS_ONNX_PATH = INFERENCE_DIR / "cardness.onnx"
+GALLERY_BIN_PATH = INFERENCE_DIR / "gallery.bin"
 
 
 def load_meta(path: Path = META_PATH) -> list[dict]:
