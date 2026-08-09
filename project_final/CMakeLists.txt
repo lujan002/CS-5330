@@ -100,8 +100,8 @@ target_link_libraries(validate_models PRIVATE
     ${LIBZIP_LIBRARIES}
 )
 
-# Chessboard calibration (same flow as project4). Writes camera_intrinsics.yaml
-# next to the binary for ar_card to pick up.
+# Chessboard calibration (same flow as project4). Writes
+# project_final/camera_intrinsics.yaml when run from build/.
 add_executable(calibrate_camera
     tools/calibrate_camera.cpp
 )

@@ -1630,11 +1630,10 @@ int main(int argc, char* argv[]) {
     bool intrinsics_loaded = false;
     bool pose_mode = false;
 
-    // Prefer project4 calibration if you run from project_final/build/
+    // project_final/camera_intrinsics.yaml (cwd is usually project_final/build/)
     const char* intrinsic_paths[] = {
+        "../camera_intrinsics.yaml",
         "camera_intrinsics.yaml",
-        "../project4/build/camera_intrinsics.yaml",
-        "../../project4/build/camera_intrinsics.yaml",
     };
 
     auto ensureIntrinsics = [&]() -> bool {
@@ -1649,7 +1648,7 @@ int main(int argc, char* argv[]) {
             }
         }
         printf("Could not open camera_intrinsics.yaml — "
-               "calibrate in project4 first, or copy yaml next to the binary\n");
+               "run ./calibrate_camera from build/, or place yaml in project_final/\n");
         return false;
     };
 

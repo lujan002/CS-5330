@@ -97,9 +97,8 @@ def main(argv):
     model_mode = False
 
     intrinsic_paths = [
+        "../camera_intrinsics.yaml",
         "camera_intrinsics.yaml",
-        "../project4/build/camera_intrinsics.yaml",
-        "../../project4/build/camera_intrinsics.yaml",
     ]
 
     print("Controls: q=quit  p=toggle pose/axes  m=model  s=print corners")
@@ -191,7 +190,7 @@ def main(argv):
                 if not ok_load:
                     print(
                         "Could not open camera_intrinsics.yaml — "
-                        "calibrate in project4 first, or copy yaml next to the binary"
+                        "run calibrate_camera from build/, or place yaml in project_final/"
                     )
                 else:
                     intrinsics_loaded = True
@@ -213,7 +212,7 @@ def main(argv):
                 if not ok_load:
                     print(
                         "Could not open camera_intrinsics.yaml — "
-                        "calibrate in project4 first, or copy yaml next to the binary"
+                        "run calibrate_camera from build/, or place yaml in project_final/"
                     )
                 else:
                     intrinsics_loaded = True

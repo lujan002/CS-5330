@@ -5,3 +5,6 @@ __pycache__/
 project4/models/
 /color_histogram.py
 */data/
+project_final/validation/
+project_final/camera_intrinsics.yaml
+project_final/artifacts/

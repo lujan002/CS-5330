@@ -1,5 +1,5 @@
 // Standalone camera calibration — same flow as project4.
-// Writes camera_intrinsics.yaml for ar_card (run from project_final/build/).
+// Writes project_final/camera_intrinsics.yaml (run from project_final/build/).
 //
 // Usage: ./calibrate_camera [/dev/videoN]
 //   s — save a chessboard view (need >= 5)
@@ -13,6 +13,50 @@
 #include <cstdio>
 #include <iostream>
 #include <vector>
+
+// Canonical file lives in project_final/; prefer ../ when cwd is build/.
+static const char* kIntrinsicPaths[] = {
+    "../camera_intrinsics.yaml",
+    "camera_intrinsics.yaml",
+};
+
+static bool loadIntrinsics(cv::Mat& camera_mat, cv::Mat& dist_coeffs,
+                           const char** used_path = nullptr) {
+    for (const char* path : kIntrinsicPaths) {
+        cv::FileStorage fs(path, cv::FileStorage::READ);
+        if (!fs.isOpened()) {
+            continue;
+        }
+        fs["camera_mat"] >> camera_mat;
+        fs["dist_coeffs"] >> dist_coeffs;
+        fs.release();
+        if (!camera_mat.empty()) {
+            if (used_path) {
+                *used_path = path;
+            }
+            return true;
+        }
+    }
+    return false;
+}
+
+static bool writeIntrinsics(const cv::Mat& camera_mat, const cv::Mat& dist_coeffs,
+                            const char** used_path = nullptr) {
+    for (const char* path : kIntrinsicPaths) {
+        cv::FileStorage fs(path, cv::FileStorage::WRITE);
+        if (!fs.isOpened()) {
+            continue;
+        }
+        fs << "camera_mat" << camera_mat;
+        fs << "dist_coeffs" << dist_coeffs;
+        fs.release();
+        if (used_path) {
+            *used_path = path;
+        }
+        return true;
+    }
+    return false;
+}
 
 int main(int argc, char* argv[]) {
     const char* device = (argc > 1) ? argv[1] : "/dev/video0";
@@ -57,7 +101,8 @@ int main(int argc, char* argv[]) {
     bool intrinsics_loaded = false;
 
     printf("Controls: s=save view  c=calibrate  p=pose check  q=quit\n");
-    printf("Need at least 5 saved views before 'c'. Output: camera_intrinsics.yaml\n");
+    printf("Need at least 5 saved views before 'c'. "
+           "Output: project_final/camera_intrinsics.yaml\n");
 
     for (;;) {
         cap >> frame;
@@ -120,12 +165,13 @@ int main(int argc, char* argv[]) {
                 printf("Total re-projection error: %f px\n", rms);
                 std::cout << "Distortion coefficients:\n" << dist_coeffs << std::endl;
 
-                cv::FileStorage fs("camera_intrinsics.yaml", cv::FileStorage::WRITE);
-                fs << "camera_mat" << camera_mat;
-                fs << "dist_coeffs" << dist_coeffs;
-                fs.release();
-                printf("Wrote camera_intrinsics.yaml\n");
-                intrinsics_loaded = true;
+                const char* out_path = nullptr;
+                if (writeIntrinsics(camera_mat, dist_coeffs, &out_path)) {
+                    printf("Wrote %s\n", out_path);
+                    intrinsics_loaded = true;
+                } else {
+                    printf("Failed to write camera_intrinsics.yaml\n");
+                }
 
                 float length = 1.5f;
                 int thickness = 3;
@@ -140,13 +186,11 @@ int main(int argc, char* argv[]) {
             }
         }
         if (key == 'p') {
-            cv::FileStorage fs("camera_intrinsics.yaml", cv::FileStorage::READ);
-            if (!fs.isOpened()) {
+            const char* in_path = nullptr;
+            if (!loadIntrinsics(camera_mat, dist_coeffs, &in_path)) {
                 printf("Could not open camera_intrinsics.yaml — calibrate first with 'c'\n");
             } else {
-                fs["camera_mat"] >> camera_mat;
-                fs["dist_coeffs"] >> dist_coeffs;
-                fs.release();
+                printf("Loaded intrinsics from %s\n", in_path);
                 intrinsics_loaded = true;
                 pose_mode = true;
                 printf("Pose mode on — showing projected corners / camera pose\n");

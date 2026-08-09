@@ -386,16 +386,15 @@ shipping only an OpenCollada export, and the `*Mask` misuse.
 
 ## Intrinsics
 
-Calibrate once from `project_final/build/`:
+Canonical file: `project_final/camera_intrinsics.yaml`. Calibrate from `build/`:
 
 ```bash
 ./calibrate_camera [/dev/videoN]
 ```
 
-Same controls as project4: `'s'` to save views (≥5), `'c'` to calibrate and write
-`camera_intrinsics.yaml` next to the binary, `'p'` to check pose. `ar_card` also
-still looks under `../../project4/build/camera_intrinsics.yaml` if the local file
-is missing.
+`'s'` saves views (≥5), `'c'` writes that yaml, `'p'` checks pose. `ar_card` and
+`card_detector.py` load `../camera_intrinsics.yaml` (from `build/`) or
+`camera_intrinsics.yaml` (from the project root).
 
 ## Tuning
 
