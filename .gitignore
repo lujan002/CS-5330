@@ -2,11 +2,15 @@ venv/
 __pycache__/
 # *.onnx
 *.mp4
+*.pdf
+*.png
 project4/models/
 /color_histogram.py
 project_final/validation/
-project_final/camera_intrinsics.yaml
+# project_final/camera_intrinsics.yaml
 project_final/artifacts/
 project_final/data/tcg/
 project_final/data/card_match/artifacts/
 project_final/data/assets/
+*.bib
+project_final/card_match/plot_embedder_experiment.py
