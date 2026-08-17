@@ -408,3 +408,6 @@ Edit thresholds in `detectCardCorners()` inside `main.cpp` (Canny, min area, app
 
 - Feature matching instead of/in addition to 4 contour corners
 - Skinned FBX idle animation (keep Assimp bones; drop PreTransformVertices)
+
+## Acknowledgement 
+This project was developed with assistance from genAI. I defined the system goals, chose classical vs learning based approaches, and I fine tuned program behavior with extensive testing on live camera footage myself. All code on how to import models from the model database and display on screen with openGL was the work of AI and outside the scope for this project. AI worked through issues with lighting, eye textures showing through the eyelids, having proper scale, etc.****
